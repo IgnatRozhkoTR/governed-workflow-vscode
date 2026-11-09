@@ -10,3 +10,5 @@ vitest.config.ts
 package-lock.json
 .gitignore
 *.vsix
+webview-ui/**
+scripts/**

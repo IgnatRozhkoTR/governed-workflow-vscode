@@ -1,3 +1,5 @@
+import type { ApiRequest, ApiResponse, HttpMethod, Locale, QueryValue } from '../shared/protocol';
+import { encodeBranchPath, wsPath } from '../shared/paths';
 import { ApiError, AuthRequiredError } from './errors';
 import type {
   BranchList,
@@ -13,10 +15,12 @@ import type {
   FileEntry,
   GateResult,
   NewComment,
+  PlanStatus,
   Project,
   ReviewComment,
   Scratchpad,
   ScratchpadContent,
+  SetPhaseResult,
   StateFetchResult,
   TerminalStartResponse,
   TerminalStatus,
@@ -26,8 +30,7 @@ import type {
   WorkspaceSummary,
 } from './types';
 
-type HttpMethod = 'GET' | 'POST' | 'PUT';
-type QueryParams = Readonly<Record<string, string | undefined>>;
+type QueryParams = Readonly<Record<string, QueryValue>>;
 
 interface RequestSpec {
   readonly method: HttpMethod;
@@ -48,20 +51,24 @@ const NO_TOKEN_CONFIGURED_CODE = 'no_token_configured';
 const CLAUDE_SESSION_KIND = 'claude';
 const ERROR_MESSAGE_FIELDS = ['details', 'reason', 'message', 'error'] as const;
 
-export function encodeBranchPath(branch: string): string {
-  return branch.split('/').map(encodeURIComponent).join('/');
-}
-
-export function wsPath(workspace: WorkspaceRef, suffix: string): string {
-  const project = encodeURIComponent(workspace.projectId);
-  return `/api/ws/${project}/${encodeBranchPath(workspace.branch)}/${suffix}`;
-}
+export { encodeBranchPath, wsPath };
 
 export class ApiClient {
   constructor(
     private readonly serverUrl: () => string,
     private readonly token: () => Promise<string | undefined>,
   ) {}
+
+  async request(spec: ApiRequest): Promise<ApiResponse> {
+    const headers = spec.ifNoneMatch === undefined ? undefined : { 'If-None-Match': spec.ifNoneMatch };
+    const response = await this.send({ method: spec.method, path: spec.path, query: spec.query, body: spec.body, headers });
+    const etag = response.headers.get('ETag') ?? undefined;
+    return { status: response.status, body: await parseOptionalJson(response), etag };
+  }
+
+  async fetchI18n(locale: Locale): Promise<Record<string, string>> {
+    return this.requestJson({ method: 'GET', path: `/i18n/${locale}.json` });
+  }
 
   async checkToken(token: string): Promise<boolean> {
     const init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) };
@@ -178,6 +185,22 @@ export class ApiClient {
     return this.requestJson({ method: 'POST', path: wsPath(workspace, 'reject'), body: { comments } });
   }
 
+  async setPlanStatus(workspace: WorkspaceRef, status: PlanStatus): Promise<void> {
+    await this.send({ method: 'POST', path: wsPath(workspace, 'plan-status'), body: { status } });
+  }
+
+  setPhase(workspace: WorkspaceRef, phase: string): Promise<SetPhaseResult> {
+    return this.requestJson({ method: 'PUT', path: wsPath(workspace, 'phase'), body: { phase } });
+  }
+
+  async setYolo(workspace: WorkspaceRef, enabled: boolean): Promise<void> {
+    await this.send({ method: 'PUT', path: wsPath(workspace, 'yolo'), body: { enabled } });
+  }
+
+  async terminalNotify(workspace: WorkspaceRef, message: string): Promise<void> {
+    await this.send({ method: 'POST', path: wsPath(workspace, 'terminal/notify'), body: { message } });
+  }
+
   terminalStart(workspace: WorkspaceRef): Promise<TerminalStartResponse> {
     return this.requestJson({ method: 'POST', path: wsPath(workspace, 'terminal/start') });
   }
@@ -241,7 +264,7 @@ export class ApiClient {
     const url = new URL(base + path);
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined) {
-        url.searchParams.set(key, value);
+        url.searchParams.set(key, String(value));
       }
     }
     return url.toString();
@@ -271,6 +294,18 @@ async function parseJson<T>(response: Response): Promise<T> {
     return parsed as T;
   } catch {
     throw new ApiError(response.status, 'invalid_response', `The admin panel returned malformed JSON for ${response.url}.`);
+  }
+}
+
+async function parseOptionalJson(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (response.status === HTTP_NOT_MODIFIED || text.trim() === '') {
+    return null;
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
   }
 }
 

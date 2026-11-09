@@ -24,6 +24,10 @@ export class StatePoller implements vscode.Disposable {
     private readonly settings: Settings,
   ) {}
 
+  get currentEtag(): string | undefined {
+    return this.etag;
+  }
+
   get isRunning(): boolean {
     return this.windowStateListener !== undefined;
   }
@@ -81,6 +85,8 @@ export class StatePoller implements vscode.Disposable {
   }
 
   private handleFetchError(error: unknown): void {
+    // Forgetting the etag makes the next successful poll deliver the full state, which tells listeners the connection recovered.
+    this.etag = undefined;
     if (error instanceof AuthRequiredError) {
       this.stop();
       this.authRequiredEmitter.fire();

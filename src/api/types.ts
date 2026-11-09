@@ -308,3 +308,28 @@ export interface TerminalStatus {
   attach_command: string;
   kind: string;
 }
+
+export type PlanStatus = 'pending' | 'approved' | 'rejected';
+
+export interface SetPhaseResult {
+  phase: string;
+  previous_phase: string;
+}
+
+export interface AvailablePhase {
+  id: string;
+  name: string;
+  always_on: boolean;
+  is_user_gate: boolean;
+  templated: boolean;
+}
+
+export interface FileSnippet {
+  path: string;
+  lines: string[];
+  total_lines: number;
+  start?: number;
+  end?: number;
+  highlight_start?: number;
+  highlight_end?: number;
+}

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ApiError } from '../api/errors';
 import type { DiffFile, DiffMode, DiffResponse, WorkspaceRef, WorkspaceState } from '../api/types';
 import { baseFileUriParts } from '../fs/uris';
+import type { ChangeKind, DiffFileRef, DiffSource, OpenAllChangesArgs, OpenDiffArgs } from '../shared/protocol';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import type { StatePoller } from '../state/statePoller';
 
@@ -12,6 +13,9 @@ const ADDED_STATUS = 'new';
 const DELETED_STATUS = 'deleted';
 const ADDED_MARKER = /^--- \/dev\/null$/m;
 const DELETED_MARKER = /^\+\+\+ \/dev\/null$/m;
+const WORKSPACE_SIDE_LABEL = 'workspace';
+
+export type { ChangeKind };
 
 export interface ActiveWorkspaceSource {
   readonly poller: StatePoller | undefined;
@@ -27,7 +31,13 @@ export interface DiffContext extends WorkspaceSnapshot {
   readonly baseRef: string;
 }
 
-export type ChangeKind = 'added' | 'deleted' | 'renamed' | 'modified';
+interface DiffRefs {
+  readonly leftRef: string;
+  readonly rightRef?: string;
+  readonly repo?: string;
+}
+
+type DiffResources = [resource: vscode.Uri, left: vscode.Uri, right: vscode.Uri];
 
 export class ActiveStateTracker implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
@@ -80,11 +90,7 @@ export function resolveBaseRef(mode: DiffMode, response: DiffResponse, state: Wo
   if (mode === 'uncommitted') {
     return UNCOMMITTED_BASE_REF;
   }
-  const baseRef = response.base ?? state.source_branch;
-  if (!baseRef) {
-    throw new ApiError(0, 'diff_base_missing', 'The admin panel did not report a base branch for this diff.');
-  }
-  return baseRef;
+  return requireBaseRef(response.base ?? state.source_branch);
 }
 
 export function workspaceSideUri(locator: WorkspaceLocator, context: DiffContext, file: DiffFile): vscode.Uri {
@@ -102,7 +108,12 @@ export async function openAllChanges(
   context: DiffContext,
   files: readonly DiffFile[],
 ): Promise<void> {
-  if (files.length === 0) {
+  const title = `${context.workspace.branch} (${context.baseRef} ↔ ${WORKSPACE_SIDE_LABEL})`;
+  await showChangesEditor(title, files.map((file) => diffSides(locator, context, file)));
+}
+
+async function showChangesEditor(title: string, resources: readonly DiffResources[]): Promise<void> {
+  if (resources.length === 0) {
     void vscode.window.showInformationMessage('There are no changes to show.');
     return;
   }
@@ -110,9 +121,24 @@ export async function openAllChanges(
     void vscode.window.showWarningMessage('This VS Code version has no multi-file diff editor. Open each file from the Changes view.');
     return;
   }
-  const title = `${context.workspace.branch} (${context.baseRef} ↔ workspace)`;
-  const resources = files.map((file) => diffSides(locator, context, file));
   await vscode.commands.executeCommand(CHANGES_COMMAND, title, resources);
+}
+
+export async function openDiffFor(locator: WorkspaceLocator, snapshot: WorkspaceSnapshot, args: OpenDiffArgs): Promise<void> {
+  const refs = diffRefsFor(args.source, snapshot.state);
+  const [, left, right] = sidesFor(locator, snapshot, refs, args.file);
+  const title = `${args.file.path} (${refs.leftRef} ↔ ${refs.rightRef ?? WORKSPACE_SIDE_LABEL})`;
+  await vscode.commands.executeCommand('vscode.diff', left, right, title);
+}
+
+export async function openAllChangesFor(
+  locator: WorkspaceLocator,
+  snapshot: WorkspaceSnapshot,
+  args: OpenAllChangesArgs,
+): Promise<void> {
+  const refs = diffRefsFor(args.source, snapshot.state);
+  const title = `${snapshot.workspace.branch} (${refs.leftRef} ↔ ${refs.rightRef ?? WORKSPACE_SIDE_LABEL})`;
+  await showChangesEditor(title, args.files.map((file) => sidesFor(locator, snapshot, refs, file)));
 }
 
 export function registerEmptyDocumentProvider(): vscode.Disposable {
@@ -131,16 +157,53 @@ export async function runWithErrorMessage(action: () => Promise<void>): Promise<
   }
 }
 
-function diffSides(locator: WorkspaceLocator, context: DiffContext, file: DiffFile): [vscode.Uri, vscode.Uri, vscode.Uri] {
-  const kind = changeKindOf(file);
-  const workspaceSide = workspaceSideUri(locator, context, file);
-  const left = kind === 'added' ? emptyDocumentUri(file.path) : baseUri(context, file.old_path ?? file.path);
-  const right = kind === 'deleted' ? emptyDocumentUri(file.path) : workspaceSide;
+function diffSides(locator: WorkspaceLocator, context: DiffContext, file: DiffFile): DiffResources {
+  const fileRef: DiffFileRef = { path: file.path, oldPath: file.old_path, kind: changeKindOf(file) };
+  return sidesFor(locator, context, { leftRef: context.baseRef }, fileRef);
+}
+
+function diffRefsFor(source: DiffSource, state: WorkspaceState): DiffRefs {
+  switch (source.mode) {
+    case 'commit':
+      return commitRefs(source);
+    case 'uncommitted':
+      return { leftRef: UNCOMMITTED_BASE_REF, repo: source.repo };
+    case 'branch':
+      return { leftRef: requireBaseRef(source.base ?? state.source_branch), repo: source.repo };
+  }
+}
+
+function commitRefs(source: DiffSource): DiffRefs {
+  if (!source.commit) {
+    throw new ApiError(0, 'diff_commit_missing', 'A commit diff needs the commit to compare.');
+  }
+  return { leftRef: `${source.commit}^`, rightRef: source.commit, repo: source.repo };
+}
+
+function requireBaseRef(baseRef: string | null | undefined): string {
+  if (!baseRef) {
+    throw new ApiError(0, 'diff_base_missing', 'The admin panel did not report a base branch for this diff.');
+  }
+  return baseRef;
+}
+
+function sidesFor(locator: WorkspaceLocator, snapshot: WorkspaceSnapshot, refs: DiffRefs, file: DiffFileRef): DiffResources {
+  const workspaceSide = locator.fileUri(snapshot.workspace, snapshot.state, joinRepoPath(refs.repo, file.path));
+  const left = file.kind === 'added' ? emptyDocumentUri(file.path) : baseUri(snapshot, refs, refs.leftRef, file.oldPath ?? file.path);
+  const right = file.kind === 'deleted' ? emptyDocumentUri(file.path) : rightSideUri(snapshot, refs, file.path, workspaceSide);
   return [workspaceSide, left, right];
 }
 
-function baseUri(context: DiffContext, relPath: string): vscode.Uri {
-  return vscode.Uri.from(baseFileUriParts({ workspace: context.workspace, relPath, baseRef: context.baseRef }));
+function rightSideUri(snapshot: WorkspaceSnapshot, refs: DiffRefs, relPath: string, workspaceSide: vscode.Uri): vscode.Uri {
+  return refs.rightRef === undefined ? workspaceSide : baseUri(snapshot, refs, refs.rightRef, relPath);
+}
+
+function baseUri(snapshot: WorkspaceSnapshot, refs: DiffRefs, ref: string, relPath: string): vscode.Uri {
+  return vscode.Uri.from(baseFileUriParts({ workspace: snapshot.workspace, relPath, baseRef: ref, repo: refs.repo }));
+}
+
+export function joinRepoPath(repo: string | undefined, relPath: string): string {
+  return repo ? `${repo.replace(/\/+$/, '')}/${relPath.replace(/^\/+/, '')}` : relPath;
 }
 
 function emptyDocumentUri(relPath: string): vscode.Uri {

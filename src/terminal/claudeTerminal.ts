@@ -22,7 +22,18 @@ export interface ClaudeTerminalDeps {
   readonly activeWorkspace: ActiveWorkspaceSource;
 }
 
+export interface StartClaudeOptions {
+  readonly ref?: WorkspaceRef;
+  readonly skipConfirm?: boolean;
+}
+
+type StartClaudeArgument = RefArgument | StartClaudeOptions;
+
 type Dimensions = Readonly<{ columns: number; rows: number }>;
+
+function isStartClaudeOptions(arg: StartClaudeArgument): arg is StartClaudeOptions {
+  return typeof arg === 'object' && 'skipConfirm' in arg;
+}
 
 function workspaceKey(workspace: WorkspaceRef): string {
   return `${workspace.projectId}\u0000${workspace.branch}`;
@@ -141,18 +152,22 @@ class ClaudeTerminalManager {
     await this.runSessionCall(() => this.deps.client.terminalResume(ref), ref);
   }
 
-  async startFresh(ref: WorkspaceRef): Promise<void> {
-    const choice = await vscode.window.showWarningMessage(
-      `Start a fresh Claude session for ${ref.branch}? This kills the running session.`,
-      { modal: true },
-      START_CONFIRM_ACTION,
-    );
-    if (choice !== START_CONFIRM_ACTION) {
+  async startFresh(ref: WorkspaceRef, skipConfirm: boolean): Promise<void> {
+    if (!skipConfirm && !(await this.confirmStartFresh(ref))) {
       return;
     }
     this.terminals.get(workspaceKey(ref))?.dispose();
     this.terminals.delete(workspaceKey(ref));
     await this.runSessionCall(() => this.deps.client.terminalStart(ref), ref);
+  }
+
+  private async confirmStartFresh(ref: WorkspaceRef): Promise<boolean> {
+    const choice = await vscode.window.showWarningMessage(
+      `Start a fresh Claude session for ${ref.branch}? This kills the running session.`,
+      { modal: true },
+      START_CONFIRM_ACTION,
+    );
+    return choice === START_CONFIRM_ACTION;
   }
 
   private async runSessionCall(call: () => Promise<unknown>, ref: WorkspaceRef): Promise<void> {
@@ -213,10 +228,11 @@ export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: C
         await manager.resume(target);
       }
     }),
-    vscode.commands.registerCommand('governedWorkflow.startClaude', async (arg?: RefArgument) => {
-      const target = resolve(arg);
+    vscode.commands.registerCommand('governedWorkflow.startClaude', async (arg?: StartClaudeArgument) => {
+      const options = isStartClaudeOptions(arg) ? arg : { ref: unwrapRef(arg) };
+      const target = resolve(options.ref);
       if (target !== undefined) {
-        await manager.startFresh(target);
+        await manager.startFresh(target, options.skipConfirm === true);
       }
     }),
   );

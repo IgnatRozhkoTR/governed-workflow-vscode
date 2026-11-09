@@ -1,0 +1,50 @@
+.gw-settings {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.gw-settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 0;
+}
+
+.gw-settings-nav-item {
+  text-align: left;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--gw-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.gw-settings-nav-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.gw-settings-nav-item-active {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.gw-settings-body {
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .gw-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .gw-settings-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
