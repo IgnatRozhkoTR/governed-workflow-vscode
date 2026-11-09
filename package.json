@@ -1,0 +1,361 @@
+{
+  "name": "governed-workflow-vscode",
+  "displayName": "Governed Workflow",
+  "description": "VS Code client for Governed Workflow: browse workspaces, follow phases, review branch diffs, approve gates and run the Claude session through the admin panel API.",
+  "version": "0.1.0",
+  "publisher": "ignatrozhko",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IgnatRozhkoTR/governed-workflow-vscode"
+  },
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "workspace",
+    "ui"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Governed Workflow",
+      "properties": {
+        "governedWorkflow.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:5111",
+          "description": "Base URL of the Governed Workflow admin panel."
+        },
+        "governedWorkflow.pollIntervalSeconds": {
+          "type": "number",
+          "default": 10,
+          "minimum": 3,
+          "description": "How often the workspace state is polled while the VS Code window is focused."
+        },
+        "governedWorkflow.terminal.maximize": {
+          "type": "boolean",
+          "default": true,
+          "description": "Maximize the editor area when a Claude session terminal opens."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "governedWorkflow",
+          "title": "Governed Workflow",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "governedWorkflow": [
+        {
+          "id": "governedWorkflow.projects",
+          "name": "Projects"
+        },
+        {
+          "id": "governedWorkflow.state",
+          "name": "Workflow State"
+        },
+        {
+          "id": "governedWorkflow.changes",
+          "name": "Changes"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "governedWorkflow.projects",
+        "contents": "Connect to the Governed Workflow admin panel.\n[Set Admin Token](command:governedWorkflow.setToken)\n[Configure Server URL](command:workbench.action.openSettings?%5B%22governedWorkflow.serverUrl%22%5D)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "governedWorkflow.selectWorkspace",
+        "title": "Select Workspace",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.openWorktree",
+        "title": "Open Worktree",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.createProject",
+        "title": "Create Project",
+        "category": "Governed Workflow",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "governedWorkflow.createWorkspace",
+        "title": "Create Workspace",
+        "category": "Governed Workflow",
+        "icon": "$(add)"
+      },
+      {
+        "command": "governedWorkflow.editTicketContext",
+        "title": "Edit Ticket Context",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.setToken",
+        "title": "Set Admin Token",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.refresh",
+        "title": "Refresh",
+        "category": "Governed Workflow",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "governedWorkflow.openStateDetail",
+        "title": "Open State Detail",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.openScratchpad",
+        "title": "Open Scratchpad",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.openFileDiff",
+        "title": "Open File Diff",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.openChanges",
+        "title": "Open All Changes",
+        "category": "Governed Workflow",
+        "icon": "$(diff-multiple)"
+      },
+      {
+        "command": "governedWorkflow.changes.toggleMode",
+        "title": "Toggle Changes Mode",
+        "category": "Governed Workflow",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "governedWorkflow.changes.refresh",
+        "title": "Refresh Changes",
+        "category": "Governed Workflow",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "governedWorkflow.comment.create",
+        "title": "Add Review Comment",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.comment.reply",
+        "title": "Reply",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.comment.resolve",
+        "title": "Resolve Thread",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.comment.unresolve",
+        "title": "Unresolve Thread",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.resumeClaude",
+        "title": "Resume Claude Session",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.startClaude",
+        "title": "Start Fresh Claude Session",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.approveGate",
+        "title": "Approve Gate",
+        "category": "Governed Workflow",
+        "icon": "$(check)"
+      },
+      {
+        "command": "governedWorkflow.rejectGate",
+        "title": "Reject Gate",
+        "category": "Governed Workflow",
+        "icon": "$(close)"
+      },
+      {
+        "command": "governedWorkflow.gateActions",
+        "title": "Gate Actions",
+        "category": "Governed Workflow"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "governedWorkflow.selectWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.openWorktree",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.editTicketContext",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.openStateDetail",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.openScratchpad",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.openFileDiff",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comment.create",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comment.reply",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comment.resolve",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comment.unresolve",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "governedWorkflow.createProject",
+          "when": "view == governedWorkflow.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.createWorkspace",
+          "when": "view == governedWorkflow.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.refresh",
+          "when": "view == governedWorkflow.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.refresh",
+          "when": "view == governedWorkflow.state",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.approveGate",
+          "when": "view == governedWorkflow.state && governedWorkflow.gatePending",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.rejectGate",
+          "when": "view == governedWorkflow.state && governedWorkflow.gatePending",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.changes.toggleMode",
+          "when": "view == governedWorkflow.changes",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.changes.refresh",
+          "when": "view == governedWorkflow.changes",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.openChanges",
+          "when": "view == governedWorkflow.changes",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "governedWorkflow.openWorktree",
+          "when": "view == governedWorkflow.projects && viewItem == gwWorkspace",
+          "group": "1_workspace"
+        },
+        {
+          "command": "governedWorkflow.editTicketContext",
+          "when": "view == governedWorkflow.projects && viewItem == gwWorkspace",
+          "group": "1_workspace"
+        },
+        {
+          "command": "governedWorkflow.resumeClaude",
+          "when": "view == governedWorkflow.projects && viewItem == gwWorkspace",
+          "group": "inline"
+        },
+        {
+          "command": "governedWorkflow.startClaude",
+          "when": "view == governedWorkflow.projects && viewItem == gwWorkspace",
+          "group": "1_workspace"
+        },
+        {
+          "command": "governedWorkflow.createWorkspace",
+          "when": "view == governedWorkflow.projects && viewItem == gwProject",
+          "group": "inline"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "governedWorkflow.comment.create",
+          "group": "inline",
+          "when": "commentController == governedWorkflow.review && commentThreadIsEmpty"
+        },
+        {
+          "command": "governedWorkflow.comment.reply",
+          "group": "inline",
+          "when": "commentController == governedWorkflow.review && !commentThreadIsEmpty"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "governedWorkflow.comment.resolve",
+          "group": "inline",
+          "when": "commentController == governedWorkflow.review && commentThread == unresolved"
+        },
+        {
+          "command": "governedWorkflow.comment.unresolve",
+          "group": "inline",
+          "when": "commentController == governedWorkflow.review && commentThread == resolved"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.js --sourcemap",
+    "watch": "npm run build -- --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/vscode": "~1.101.0",
+    "@types/ws": "^8.18.2",
+    "@vscode/vsce": "^4.1.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "ws": "^8.22.2"
+  }
+}
