@@ -21,8 +21,6 @@ import type {
   ProjectRepo,
   ProjectSettings,
   ReviewComment,
-  Scratchpad,
-  ScratchpadContent,
   SetPhaseResult,
   SetupModule,
   SetupStartRequest,
@@ -136,15 +134,6 @@ export class ApiClient {
   async getCriteria(workspace: WorkspaceRef): Promise<Criterion[]> {
     const body = await this.requestJson<{ criteria: Criterion[] }>({ method: 'GET', path: wsPath(workspace, 'criteria') });
     return body.criteria;
-  }
-
-  async listScratchpads(workspace: WorkspaceRef): Promise<Scratchpad[]> {
-    const body = await this.requestJson<{ files: Scratchpad[] }>({ method: 'GET', path: wsPath(workspace, 'scratchpads') });
-    return body.files;
-  }
-
-  getScratchpad(workspace: WorkspaceRef, name: string): Promise<ScratchpadContent> {
-    return this.requestJson({ method: 'GET', path: wsPath(workspace, 'scratchpads/content'), query: { name } });
   }
 
   getDiff(workspace: WorkspaceRef, query: DiffQuery): Promise<DiffResponse> {

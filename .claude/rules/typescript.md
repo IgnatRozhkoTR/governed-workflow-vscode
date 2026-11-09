@@ -12,7 +12,7 @@ paths:
 
 - TypeScript in strict mode, compiled by esbuild into one CommonJS bundle at `dist/extension.js`. `vscode` is external.
 - One feature per module under `src/`. Each module exports classes or functions; only `src/extension.ts` wires them into VS Code.
-- Pure modules (`src/fs/uris.ts`, `src/comments/lineHash.ts`, `src/state/stateSections.ts`) must not touch the `vscode` runtime, so vitest can run them directly.
+- Pure modules (`src/fs/uris.ts`, `src/comments/lineHash.ts`, `src/views/launcherItems.ts`) must not touch the `vscode` runtime, so vitest can run them directly.
 
 ## Boundaries
 

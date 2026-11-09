@@ -392,7 +392,13 @@ export interface VerificationProfile {
 export interface SetupStartRequest {
   modules: string[];
   languages: number[];
-  custom_languages: unknown[];
+  custom_languages: CustomLanguage[];
+}
+
+export interface CustomLanguage {
+  name: string;
+  config: string;
+  details: string;
 }
 
 export interface SetupStatus {

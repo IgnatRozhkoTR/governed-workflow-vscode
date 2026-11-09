@@ -47,6 +47,8 @@ export interface DiffFileRef { readonly path: string; readonly oldPath?: string 
 export interface OpenDiffArgs { readonly source: DiffSource; readonly file: DiffFileRef; }
 export interface OpenAllChangesArgs { readonly source: DiffSource; readonly files: readonly DiffFileRef[]; }
 export interface StartClaudeArgs { readonly confirmed: boolean; }
+export interface SaveFileArgs { readonly suggestedName: string; readonly content: string; }
+export interface SaveFileResult { readonly saved: boolean; }
 
 export interface RpcMethodMap {
   'api.request':          { params: ApiRequest;                 result: ApiResponse };
@@ -63,6 +65,7 @@ export interface RpcMethodMap {
   'native.copyText':      { params: { text: string };           result: void };
   'native.openExternal':  { params: { url: string };            result: void };
   'native.setToken':      { params: Record<string, never>;      result: void };
+  'native.saveFile':      { params: SaveFileArgs;               result: SaveFileResult };
 }
 export type RpcMethod = keyof RpcMethodMap;
 export type RpcParams<M extends RpcMethod> = RpcMethodMap[M]['params'];

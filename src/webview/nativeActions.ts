@@ -1,9 +1,11 @@
+import { homedir } from 'node:os';
+import { basename } from 'node:path';
 import * as vscode from 'vscode';
 import type { ApiClient } from '../api/client';
 import { pickAndSelectWorkspace } from '../commands/switchWorkspace';
 import { joinRepoPath, openAllChangesFor, openDiffFor, type WorkspaceSnapshot } from '../diff/diffView';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
-import type { OpenFileArgs, RpcMethod } from '../shared/protocol';
+import type { OpenFileArgs, RpcMethod, SaveFileArgs, SaveFileResult } from '../shared/protocol';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
 import { RpcHandlerError, type RpcHandler } from './rpcHost';
 
@@ -33,6 +35,7 @@ export function createNativeHandlers(deps: NativeActionDeps): NativeHandlers {
     'native.copyText': (args) => runNative(() => vscode.env.clipboard.writeText(requireString(args.text, 'text'))),
     'native.openExternal': (args) => runNative(() => openExternal(requireString(args.url, 'url'))),
     'native.setToken': () => runNative(() => executeCommand('governedWorkflow.setToken')),
+    'native.saveFile': (args) => saveFile(args),
   };
 }
 
@@ -40,11 +43,15 @@ async function runNative(action: () => Thenable<unknown>): Promise<void> {
   try {
     await action();
   } catch (error) {
-    if (error instanceof RpcHandlerError) {
-      throw error;
-    }
-    throw new RpcHandlerError(NATIVE_FAILED_CODE, error instanceof Error ? error.message : String(error));
+    throw toNativeFailure(error);
   }
+}
+
+function toNativeFailure(error: unknown): RpcHandlerError {
+  if (error instanceof RpcHandlerError) {
+    return error;
+  }
+  return new RpcHandlerError(NATIVE_FAILED_CODE, error instanceof Error ? error.message : String(error));
 }
 
 function requireSnapshot(deps: NativeActionDeps): WorkspaceSnapshot {
@@ -87,6 +94,28 @@ async function openExternal(url: string): Promise<void> {
     throw new RpcHandlerError(NATIVE_FAILED_CODE, `Only http and https links can be opened, not "${uri.scheme}".`);
   }
   await vscode.env.openExternal(uri);
+}
+
+async function saveFile(args: SaveFileArgs): Promise<SaveFileResult> {
+  const fileName = basename(requireString(args.suggestedName, 'suggestedName'));
+  if (typeof args.content !== 'string') {
+    throw new RpcHandlerError(NATIVE_FAILED_CODE, 'The "content" argument must be a string.');
+  }
+  try {
+    const target = await vscode.window.showSaveDialog({ defaultUri: defaultSaveUri(fileName), saveLabel: 'Download' });
+    if (target === undefined) {
+      return { saved: false };
+    }
+    await vscode.workspace.fs.writeFile(target, new TextEncoder().encode(args.content));
+    return { saved: true };
+  } catch (error) {
+    throw toNativeFailure(error);
+  }
+}
+
+function defaultSaveUri(fileName: string): vscode.Uri {
+  const folder = vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.Uri.file(homedir());
+  return vscode.Uri.joinPath(folder, fileName);
 }
 
 function executeCommand(command: string, ...args: unknown[]): Thenable<unknown> {

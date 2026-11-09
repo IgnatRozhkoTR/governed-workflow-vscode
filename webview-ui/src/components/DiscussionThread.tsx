@@ -23,15 +23,13 @@ function toMessage(entry: { id: number; author: string; text: string; created_at
 
 export function DiscussionThread({ discussion, badges }: DiscussionThreadProps): JSX.Element {
   return (
-    <div id={`discussion-${discussion.id}`}>
-      <ThreadView
-        root={toMessage(discussion)}
-        replies={discussion.replies.map(toMessage)}
-        resolved={discussion.status === RESOLVED_STATUS}
-        badges={badges}
-        onReply={(text) => changeDiscussion(replyDiscussion(discussion.id, text))}
-        onToggleResolved={(next) => changeDiscussion(updateDiscussion(discussion.id, { status: next ? 'resolved' : 'open' }))}
-      />
-    </div>
+    <ThreadView
+      root={toMessage(discussion)}
+      replies={discussion.replies.map(toMessage)}
+      resolved={discussion.status === RESOLVED_STATUS}
+      badges={badges}
+      onReply={(text) => changeDiscussion(replyDiscussion(discussion.id, text))}
+      onToggleResolved={(next) => changeDiscussion(updateDiscussion(discussion.id, { status: next ? 'resolved' : 'open' }))}
+    />
   );
 }

@@ -4,19 +4,26 @@ import type { WorkspaceState } from './api/types';
 import { registerAnnotations } from './annotations/annotationProvider';
 import { COMMAND_IDS, registerWorkspaceCommands } from './commands/workspaceCommands';
 import { registerGateCommands } from './commands/gateCommands';
+import { registerProjectCommands } from './commands/projectCommands';
+import { registerResourceComments } from './comments/resourceComments';
 import { registerReviewComments } from './comments/reviewComments';
 import { Settings } from './config/settings';
 import { TokenStore } from './config/tokenStore';
 import { registerChangesTree } from './diff/changesTree';
 import { BaseContentProvider } from './fs/baseContentProvider';
-import { RemoteFileSystem } from './fs/remoteFileSystem';
+import { REMOTE_FS_READONLY, RemoteFileSystem } from './fs/remoteFileSystem';
 import { BASE_FILE_SCHEME, REMOTE_FILE_SCHEME } from './fs/uris';
 import { WorkspaceLocator } from './fs/workspaceLocator';
 import { ActiveWorkspace } from './state/activeWorkspace';
 import { registerClaudeTerminal } from './terminal/claudeTerminal';
+import { registerImageAttach } from './terminal/imageAttach';
+import { registerTerminalSessionCommands } from './terminal/terminalSessions';
+import { registerCommentsView } from './views/commentsTree';
+import { registerLauncherTree } from './views/launcherTree';
 import { registerProjectsTree } from './views/projectsTree';
-import { MarkdownDocProvider, registerMarkdownDocs } from './views/markdownDocs';
-import { registerStateTree } from './views/stateTree';
+import { registerWorkspaceIndicators } from './views/workspaceIndicators';
+import { registerControlPanel, type WorkspaceControlPanelHost } from './webview/controlPanel';
+import { registerPanelCommands } from './webview/panelCommands';
 
 const SET_TOKEN_ACTION = 'Set token';
 
@@ -30,17 +37,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const active = new ActiveWorkspace(client, settings);
   const locator = new WorkspaceLocator();
   const view = activeView(context, active);
-  const docs = new MarkdownDocProvider();
   context.subscriptions.push(settings, active);
 
   registerVirtualFileSystems(context, client);
-  registerMarkdownDocs(context, { docs });
+  const panel = registerControlPanel(context, { client, active, locator });
+  registerPanelCommands(context, { client, active, panel });
+  openPanelOnWorkspaceSelect(context, active, panel);
   const projectsTree = registerProjectsTree(context, { client });
-  registerStateTree(context, { client, active, docs });
+  registerLauncherTree(context, { active });
+  registerWorkspaceIndicators(context, active);
   registerWorkspaceCommands(context, { client, active, tokens, locator, projectsTree });
+  registerProjectCommands(context, { client, projectsTree, activeWorkspace: view });
   registerChangesTree(context, { client, locator, active });
-  registerReviewComments(context, { client, locator, active });
-  registerClaudeTerminal(context, { client, activeWorkspace: view });
+  registerComments(context, { client, locator, active, panel });
+  const claude = registerClaudeTerminal(context, { client, activeWorkspace: view });
+  registerTerminalSessionCommands(context, { client });
+  registerImageAttach(context, { client, activeWorkspace: view, claude });
   registerGateCommands(context, { client, active: view });
   registerAnnotations(context);
 
@@ -52,10 +64,36 @@ export function deactivate(): void {}
 function registerVirtualFileSystems(context: vscode.ExtensionContext, client: ApiClient): void {
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider(REMOTE_FILE_SCHEME, new RemoteFileSystem(client), {
-      isReadonly: true,
+      isReadonly: REMOTE_FS_READONLY,
       isCaseSensitive: true,
     }),
     vscode.workspace.registerTextDocumentContentProvider(BASE_FILE_SCHEME, new BaseContentProvider(client)),
+  );
+}
+
+interface CommentWiringDeps {
+  readonly client: ApiClient;
+  readonly locator: WorkspaceLocator;
+  readonly active: ActiveWorkspace;
+  readonly panel: WorkspaceControlPanelHost;
+}
+
+// Native comment changes reach the panel through this invalidate; panel-side changes reach the native threads
+// through the state refresh the panel requests after every mutation.
+function registerComments(context: vscode.ExtensionContext, deps: CommentWiringDeps): void {
+  const { comments, controller } = registerReviewComments(context, deps);
+  registerResourceComments(context, { comments, locator: deps.locator });
+  registerCommentsView(context, { comments, controller, locator: deps.locator, panel: deps.panel });
+  context.subscriptions.push(comments.onDidMutate(() => deps.panel.invalidate(['comments', 'reviewThreads'])));
+}
+
+function openPanelOnWorkspaceSelect(context: vscode.ExtensionContext, active: ActiveWorkspace, panel: WorkspaceControlPanelHost): void {
+  context.subscriptions.push(
+    active.onDidChange((ref) => {
+      if (ref !== undefined) {
+        panel.createOrShow();
+      }
+    }),
   );
 }
 

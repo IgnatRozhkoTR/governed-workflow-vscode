@@ -1,8 +1,8 @@
 {
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
-  "description": "VS Code client for Governed Workflow: browse workspaces, follow phases, review branch diffs, approve gates and run the Claude session through the admin panel API.",
-  "version": "0.1.0",
+  "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
+  "version": "0.2.0",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -21,7 +21,8 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onWebviewPanel:governedWorkflow.control"
   ],
   "contributes": {
     "configuration": {
@@ -62,11 +63,15 @@
         },
         {
           "id": "governedWorkflow.state",
-          "name": "Workflow State"
+          "name": "Workspace"
         },
         {
           "id": "governedWorkflow.changes",
           "name": "Changes"
+        },
+        {
+          "id": "governedWorkflow.comments",
+          "name": "Comments"
         }
       ]
     },
@@ -74,6 +79,11 @@
       {
         "view": "governedWorkflow.projects",
         "contents": "Connect to the Governed Workflow admin panel.\n[Set Admin Token](command:governedWorkflow.setToken)\n[Configure Server URL](command:workbench.action.openSettings?%5B%22governedWorkflow.serverUrl%22%5D)"
+      },
+      {
+        "view": "governedWorkflow.state",
+        "contents": "Select a workspace in Projects to follow it here and open it in Workspace Control.\n[Switch Workspace](command:governedWorkflow.switchWorkspace)",
+        "when": "!governedWorkflow.hasWorkspace"
       }
     ],
     "commands": [
@@ -116,16 +126,6 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "governedWorkflow.openStateDetail",
-        "title": "Open State Detail",
-        "category": "Governed Workflow"
-      },
-      {
-        "command": "governedWorkflow.openScratchpad",
-        "title": "Open Scratchpad",
-        "category": "Governed Workflow"
-      },
-      {
         "command": "governedWorkflow.openFileDiff",
         "title": "Open File Diff",
         "category": "Governed Workflow"
@@ -161,12 +161,14 @@
       {
         "command": "governedWorkflow.comment.resolve",
         "title": "Resolve Thread",
-        "category": "Governed Workflow"
+        "category": "Governed Workflow",
+        "icon": "$(check)"
       },
       {
         "command": "governedWorkflow.comment.unresolve",
         "title": "Unresolve Thread",
-        "category": "Governed Workflow"
+        "category": "Governed Workflow",
+        "icon": "$(discard)"
       },
       {
         "command": "governedWorkflow.resumeClaude",
@@ -194,6 +196,131 @@
         "command": "governedWorkflow.gateActions",
         "title": "Gate Actions",
         "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.openControlPanel",
+        "title": "Open Workspace Control",
+        "category": "Governed Workflow",
+        "icon": "$(layout-panel)"
+      },
+      {
+        "command": "governedWorkflow.openPlan",
+        "title": "Open Plan",
+        "category": "Governed Workflow",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "governedWorkflow.approvePlan",
+        "title": "Approve Plan",
+        "category": "Governed Workflow",
+        "icon": "$(pass)"
+      },
+      {
+        "command": "governedWorkflow.rejectPlan",
+        "title": "Reject Plan",
+        "category": "Governed Workflow",
+        "icon": "$(error)"
+      },
+      {
+        "command": "governedWorkflow.setPhase",
+        "title": "Set Phase…",
+        "category": "Governed Workflow",
+        "icon": "$(milestone)"
+      },
+      {
+        "command": "governedWorkflow.toggleYolo",
+        "title": "Toggle YOLO Mode",
+        "category": "Governed Workflow",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "governedWorkflow.notifyClaude",
+        "title": "Notify Claude…",
+        "category": "Governed Workflow",
+        "icon": "$(bell)"
+      },
+      {
+        "command": "governedWorkflow.switchWorkspace",
+        "title": "Switch Workspace…",
+        "category": "Governed Workflow",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "governedWorkflow.killClaude",
+        "title": "Kill Claude Session",
+        "category": "Governed Workflow",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "governedWorkflow.terminalSessions",
+        "title": "Terminal Sessions…",
+        "category": "Governed Workflow",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "governedWorkflow.attachImage",
+        "title": "Attach Image to Claude…",
+        "category": "Governed Workflow",
+        "icon": "$(file-media)"
+      },
+      {
+        "command": "governedWorkflow.commentOnResource",
+        "title": "Add Workflow Comment…",
+        "category": "Governed Workflow",
+        "icon": "$(comment)"
+      },
+      {
+        "command": "governedWorkflow.removeProject",
+        "title": "Remove Project",
+        "category": "Governed Workflow",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "governedWorkflow.archiveWorkspace",
+        "title": "Archive Workspace",
+        "category": "Governed Workflow",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "governedWorkflow.toggleShowArchived",
+        "title": "Show/Hide Archived Workspaces",
+        "category": "Governed Workflow",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "governedWorkflow.runProjectSetup",
+        "title": "Run Project Setup…",
+        "category": "Governed Workflow",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "governedWorkflow.comments.filter",
+        "title": "Filter Comments",
+        "category": "Governed Workflow",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "governedWorkflow.comments.open",
+        "title": "Open Comment",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.comments.reply",
+        "title": "Reply",
+        "category": "Governed Workflow",
+        "icon": "$(reply)"
+      },
+      {
+        "command": "governedWorkflow.comments.resolve",
+        "title": "Resolve Thread",
+        "category": "Governed Workflow",
+        "icon": "$(check)"
+      },
+      {
+        "command": "governedWorkflow.comments.unresolve",
+        "title": "Unresolve Thread",
+        "category": "Governed Workflow",
+        "icon": "$(discard)"
       }
     ],
     "menus": {
@@ -208,14 +335,6 @@
         },
         {
           "command": "governedWorkflow.editTicketContext",
-          "when": "false"
-        },
-        {
-          "command": "governedWorkflow.openStateDetail",
-          "when": "false"
-        },
-        {
-          "command": "governedWorkflow.openScratchpad",
           "when": "false"
         },
         {
@@ -237,6 +356,42 @@
         {
           "command": "governedWorkflow.comment.unresolve",
           "when": "false"
+        },
+        {
+          "command": "governedWorkflow.commentOnResource",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.removeProject",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.archiveWorkspace",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comments.open",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comments.reply",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comments.resolve",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comments.unresolve",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.approvePlan",
+          "when": "governedWorkflow.planPending"
+        },
+        {
+          "command": "governedWorkflow.rejectPlan",
+          "when": "governedWorkflow.planPending"
         }
       ],
       "view/title": [
@@ -254,6 +409,56 @@
           "command": "governedWorkflow.refresh",
           "when": "view == governedWorkflow.projects",
           "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.toggleShowArchived",
+          "when": "view == governedWorkflow.projects",
+          "group": "1_filter"
+        },
+        {
+          "command": "governedWorkflow.openControlPanel",
+          "when": "view == governedWorkflow.state",
+          "group": "navigation@0"
+        },
+        {
+          "command": "governedWorkflow.approvePlan",
+          "when": "view == governedWorkflow.state && governedWorkflow.planPending",
+          "group": "navigation@1"
+        },
+        {
+          "command": "governedWorkflow.rejectPlan",
+          "when": "view == governedWorkflow.state && governedWorkflow.planPending",
+          "group": "navigation@2"
+        },
+        {
+          "command": "governedWorkflow.switchWorkspace",
+          "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace",
+          "group": "1_workspace@1"
+        },
+        {
+          "command": "governedWorkflow.setPhase",
+          "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace",
+          "group": "1_workspace@2"
+        },
+        {
+          "command": "governedWorkflow.toggleYolo",
+          "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace",
+          "group": "1_workspace@3"
+        },
+        {
+          "command": "governedWorkflow.notifyClaude",
+          "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace",
+          "group": "2_claude@1"
+        },
+        {
+          "command": "governedWorkflow.attachImage",
+          "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace",
+          "group": "2_claude@2"
+        },
+        {
+          "command": "governedWorkflow.terminalSessions",
+          "when": "view == governedWorkflow.state",
+          "group": "2_claude@3"
         },
         {
           "command": "governedWorkflow.refresh",
@@ -284,6 +489,11 @@
           "command": "governedWorkflow.openChanges",
           "when": "view == governedWorkflow.changes",
           "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.comments.filter",
+          "when": "view == governedWorkflow.comments",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -311,6 +521,51 @@
           "command": "governedWorkflow.createWorkspace",
           "when": "view == governedWorkflow.projects && viewItem == gwProject",
           "group": "inline"
+        },
+        {
+          "command": "governedWorkflow.killClaude",
+          "when": "view == governedWorkflow.projects && viewItem == gwWorkspace",
+          "group": "2_claude"
+        },
+        {
+          "command": "governedWorkflow.archiveWorkspace",
+          "when": "view == governedWorkflow.projects && viewItem == gwWorkspace",
+          "group": "9_danger"
+        },
+        {
+          "command": "governedWorkflow.runProjectSetup",
+          "when": "view == governedWorkflow.projects && viewItem == gwProject",
+          "group": "1_project"
+        },
+        {
+          "command": "governedWorkflow.removeProject",
+          "when": "view == governedWorkflow.projects && viewItem == gwProject",
+          "group": "9_danger"
+        },
+        {
+          "command": "governedWorkflow.approvePlan",
+          "when": "view == governedWorkflow.state && viewItem == gwPlanPending",
+          "group": "inline@1"
+        },
+        {
+          "command": "governedWorkflow.rejectPlan",
+          "when": "view == governedWorkflow.state && viewItem == gwPlanPending",
+          "group": "inline@2"
+        },
+        {
+          "command": "governedWorkflow.comments.reply",
+          "when": "view == governedWorkflow.comments && viewItem =~ /gwComment/",
+          "group": "inline@1"
+        },
+        {
+          "command": "governedWorkflow.comments.resolve",
+          "when": "view == governedWorkflow.comments && viewItem == gwCommentOpen",
+          "group": "inline@2"
+        },
+        {
+          "command": "governedWorkflow.comments.unresolve",
+          "when": "view == governedWorkflow.comments && viewItem == gwCommentResolved",
+          "group": "inline@2"
         }
       ],
       "comments/commentThread/context": [
@@ -335,6 +590,20 @@
           "command": "governedWorkflow.comment.unresolve",
           "group": "inline",
           "when": "commentController == governedWorkflow.review && commentThread == resolved"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "governedWorkflow.commentOnResource",
+          "when": "governedWorkflow.hasWorkspace",
+          "group": "7_governedWorkflow"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "governedWorkflow.commentOnResource",
+          "when": "governedWorkflow.hasWorkspace",
+          "group": "7_governedWorkflow"
         }
       ]
     }

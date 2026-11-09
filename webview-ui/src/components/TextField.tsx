@@ -5,6 +5,7 @@ export interface TextFieldProps {
   readonly value: string;
   readonly onInput: (v: string) => void;
   readonly placeholder?: string;
+  readonly type?: 'text' | 'password';
   readonly multiline?: boolean;
   readonly rows?: number;
   readonly disabled?: boolean;
@@ -23,7 +24,7 @@ function isSubmitKey(event: KeyboardEvent, submitOn: 'enter' | 'mod-enter'): boo
 }
 
 export function TextField(props: TextFieldProps): JSX.Element {
-  const { value, onInput, placeholder, multiline = false, rows = 3, disabled = false, autoFocus = false, onSubmit } = props;
+  const { value, onInput, placeholder, type = 'text', multiline = false, rows = 3, disabled = false, autoFocus = false, onSubmit } = props;
   const submitOn = props.submitOn ?? (multiline ? 'mod-enter' : 'enter');
   const ref = useRef<FieldElement>(null);
   useEffect(() => {
@@ -41,5 +42,5 @@ export function TextField(props: TextFieldProps): JSX.Element {
   const shared = { class: 'gw-input', value, placeholder, disabled, onInput: handleInput, onKeyDown: handleKeyDown };
   return multiline
     ? <textarea {...shared} ref={ref as JSX.HTMLAttributes<HTMLTextAreaElement>['ref']} rows={rows} />
-    : <input {...shared} ref={ref as JSX.HTMLAttributes<HTMLInputElement>['ref']} type="text" />;
+    : <input {...shared} ref={ref as JSX.HTMLAttributes<HTMLInputElement>['ref']} type={type} autoComplete={type === 'password' ? 'off' : undefined} />;
 }

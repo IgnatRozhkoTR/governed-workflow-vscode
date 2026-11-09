@@ -12,6 +12,16 @@ import type { TabProps } from '../types';
 type ViewMode = 'preview' | 'source';
 
 const ROOT_REPO = '';
+const UNSAFE_FILENAME_CHARS = /[/\\:*?"<>|\x00-\x1f]/g;
+const MARKDOWN_EXTENSION = /\.md$/i;
+
+function downloadFilename(name: string, title: string | undefined): string {
+  const sanitized = (title ?? '').replace(UNSAFE_FILENAME_CHARS, ' ').replace(/\s+/g, ' ').trim();
+  if (sanitized === '') {
+    return name;
+  }
+  return MARKDOWN_EXTENSION.test(sanitized) ? sanitized : `${sanitized}.md`;
+}
 
 export function ScratchpadsTab({ active }: TabProps): JSX.Element {
   const t = useT();
@@ -25,6 +35,7 @@ export function ScratchpadsTab({ active }: TabProps): JSX.Element {
   const repoOptions = [{ value: ROOT_REPO, label: t('scratchpads.rootLabel') }, ...(repos.data?.repos ?? []).map((entry) => ({ value: entry.path, label: entry.name }))];
   const activeRepo = repoOptions.some((option) => option.value === repo) ? repo : ROOT_REPO;
   const files = useResource('scratchpads', `list|${activeRepo}`, () => listScratchpads(activeRepo === ROOT_REPO ? undefined : activeRepo), { active });
+  const selectedTitle = files.data?.files.find((file) => file.name === name)?.title;
 
   const confirmLeave = async (): Promise<boolean> =>
     !isDirty ||
@@ -72,7 +83,7 @@ export function ScratchpadsTab({ active }: TabProps): JSX.Element {
         {name === '' ? (
           <EmptyState icon="notebook" message={t('scratchpads.selectFile')} />
         ) : (
-          <ScratchpadEditor key={`${activeRepo}|${name}`} name={name} repo={activeRepo} active={active} onDirtyChange={setDirty} />
+          <ScratchpadEditor key={`${activeRepo}|${name}`} name={name} title={selectedTitle} repo={activeRepo} active={active} onDirtyChange={setDirty} />
         )}
       </section>
     </div>
@@ -81,12 +92,13 @@ export function ScratchpadsTab({ active }: TabProps): JSX.Element {
 
 interface EditorProps {
   readonly name: string;
+  readonly title: string | undefined;
   readonly repo: string;
   readonly active: boolean;
   readonly onDirtyChange: (isDirty: boolean) => void;
 }
 
-function ScratchpadEditor({ name, repo, active, onDirtyChange }: EditorProps): JSX.Element {
+function ScratchpadEditor({ name, title, repo, active, onDirtyChange }: EditorProps): JSX.Element {
   const t = useT();
   const toast = useToast();
   const apiRepo = repo === ROOT_REPO ? undefined : repo;
@@ -124,6 +136,16 @@ function ScratchpadEditor({ name, repo, active, onDirtyChange }: EditorProps): J
       toast.error(error);
     }
   };
+  const download = async (): Promise<void> => {
+    try {
+      const result = await rpc.call('native.saveFile', { suggestedName: downloadFilename(name, title), content: draft });
+      if (result.saved) {
+        toast.success(t('messages.fileSaved'));
+      }
+    } catch (error) {
+      toast.error(error);
+    }
+  };
 
   if (resource.data === undefined) {
     return resource.error === undefined ? <Spinner /> : <ResourceView resource={resource}>{() => null}</ResourceView>;
@@ -145,6 +167,7 @@ function ScratchpadEditor({ name, repo, active, onDirtyChange }: EditorProps): J
         <span class="gw-scratchpads-spacer" />
         {updatedAt !== undefined && <span class="gw-muted">{t('vsc.scratchpads.updated')} <TimeAgo iso={updatedAt} /></span>}
         <Button size="sm" variant="secondary" icon="copy" label={t('buttons.copy')} onClick={copy} />
+        <Button size="sm" variant="secondary" icon="cloud-download" label={t('buttons.download')} onClick={download} />
         {mode === 'source' && <Button size="sm" variant="primary" icon="save" label={t('buttons.save')} disabled={!isDirty} onClick={async () => { await save.run(); }} />}
       </header>
       {mode === 'source' ? (

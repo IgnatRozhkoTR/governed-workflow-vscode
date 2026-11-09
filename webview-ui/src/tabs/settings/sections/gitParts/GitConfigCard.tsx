@@ -49,14 +49,7 @@ function GitConfigForm({ initial }: { readonly initial: GitConfig }): JSX.Elemen
           </div>
           <div class="gw-git-field">
             <label class="gw-field-label">{t('labels.apiToken')}</label>
-            <input
-              class="gw-input"
-              type="password"
-              autoComplete="off"
-              value={draft.token}
-              placeholder={t('placeholders.enterToken')}
-              onInput={(event) => patch({ token: event.currentTarget.value })}
-            />
+            <TextField type="password" value={draft.token} onInput={(token) => patch({ token })} placeholder={t('placeholders.enterToken')} />
           </div>
         </>
       )}
