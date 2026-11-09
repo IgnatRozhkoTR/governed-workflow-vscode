@@ -53,6 +53,20 @@ python3 admin-panel/backend/app.py auth-token
 
 Then run **Governed Workflow: Set Admin Token** in VS Code and paste the token. It is stored in VS Code's secret storage, not in settings.
 
+## Browser harness (dev only)
+
+`npm run harness` serves the built panel (`dist/webview`) in a normal browser tab against a live admin panel, so it can be checked visually without installing the .vsix. The page runs the real host code (`controlPanel`, `rpcHost`, `apiBridge`, `nativeActions`, the state poller) bundled for node, with `vscode` replaced by `scripts/harness/vscodeShim.mjs`. Native actions (open file or diff, terminal, save, copy, external links) are logged to the harness console and acknowledged. The harness is excluded from the .vsix.
+
+```bash
+npm run build
+GW_TOKEN=<token> GW_PROJECT=<project id> GW_BRANCH=<branch> npm run harness
+# open http://localhost:5199/  (or /?project=<id>&branch=<branch>)
+```
+
+Optional: `GW_SERVER_URL` (default `http://localhost:5111`), `GW_HARNESS_PORT` (default `5199`). Rebuild the panel with `npm run build` and reload the page; restart the harness after host-code changes.
+
+The panel stores only a SHA-256 hash of the admin token, so an existing token cannot be read back. Reuse the token already pasted into VS Code, or create one with `python3 admin-panel/backend/app.py auth-token`. That command refuses to run when a token exists; `--force` rotates it and disconnects every client that uses the old one, including VS Code.
+
 ## Commands
 
 All commands are in the `Governed Workflow` category. The main ones are open Workspace Control, switch workspace, approve or reject the plan or the gate, set phase, toggle YOLO mode, notify Claude, resume or start Claude, attach an image, terminal sessions, run project setup, and set token. Commands that act on a tree item or a file (remove project, archive workspace, add workflow comment, the comment actions) are in the context menus.

@@ -7,6 +7,7 @@ describe('isAllowedApiPath', () => {
     '/api/ws/proj/feature%2Fx/state',
     '/api/phases/available',
     '/api/projects/my%20proj/workspaces',
+    '/api/ws/proj/feature(1)/file/a!b\'c*.ts',
   ])('isAllowedApiPath_shouldAccept_whenPathIsInsideApi: %s', (path) => {
     expect(isAllowedApiPath(path)).toBe(true);
   });

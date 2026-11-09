@@ -40,14 +40,17 @@ interface ResourceSlot<T> {
   readonly loading: boolean;
 }
 
-export function useStore<T>(selector: (s: StoreSnapshot) => T): T {
+export function useStore<T>(selector: (s: StoreSnapshot) => T, isEqual: (a: T, b: T) => boolean = Object.is): T {
   const [, setRenderCount] = useState(0);
   const selectorRef = useRef(selector);
-  const selectedRef = useRef(selector(store.getSnapshot()));
+  const selectedRef = useRef<T>(selector(store.getSnapshot()));
   selectorRef.current = selector;
-  selectedRef.current = selector(store.getSnapshot());
+  const next = selector(store.getSnapshot());
+  if (!isEqual(selectedRef.current, next)) {
+    selectedRef.current = next;
+  }
   useEffect(() => store.subscribe(() => {
-    if (!Object.is(selectorRef.current(store.getSnapshot()), selectedRef.current)) {
+    if (!isEqual(selectedRef.current, selectorRef.current(store.getSnapshot()))) {
       setRenderCount((count) => count + 1);
     }
   }), []);
@@ -161,8 +164,12 @@ export function usePhaseLabel(): (phase: string) => string {
   return useCallback((phase: string) => phaseLabel(phase, plan, available), [plan, available]);
 }
 
+function isSameComments(left: readonly ReviewComment[], right: readonly ReviewComment[]): boolean {
+  return left === right || JSON.stringify(left) === JSON.stringify(right);
+}
+
 export function useComments(scope: string, target: string): readonly ReviewComment[] {
-  return useStore((s) => selectComments(s, scope, target));
+  return useStore((s) => selectComments(s, scope, target), isSameComments);
 }
 
 export function useOpenCommentCount(scope: string, target: string): number {

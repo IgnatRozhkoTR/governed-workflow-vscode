@@ -12,3 +12,4 @@ package-lock.json
 *.vsix
 webview-ui/**
 scripts/**
+.harness-build/**

@@ -63,10 +63,6 @@ export interface ModulesSaveResult {
   readonly configurator_warnings?: readonly ConfiguratorWarning[];
 }
 
-export function loadTaskContext(): Promise<WorkspaceContext> {
-  return apiGet<WorkspaceContext>(ws('context'));
-}
-
 export function putContext(update: ContextUpdate): Promise<unknown> {
   return apiPut(ws('context'), update);
 }

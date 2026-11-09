@@ -35,6 +35,7 @@ export function registerPanelCommands(context: vscode.ExtensionContext, deps: Pa
     'governedWorkflow.rejectPlan': () => panel.createOrShow({ tab: 'planning', action: 'rejectPlan' }),
     'governedWorkflow.setPhase': () => panel.createOrShow({ tab: 'phase', action: 'setPhase' }),
     'governedWorkflow.toggleYolo': () => toggleYolo(deps),
+    'governedWorkflow.disableYolo': () => toggleYolo(deps),
     'governedWorkflow.notifyClaude': () => notifyClaude(deps),
     'governedWorkflow.switchWorkspace': () => pickAndSelectWorkspace(deps),
   };

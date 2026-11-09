@@ -1,6 +1,7 @@
 import type { WorkspaceContext } from '@api-types';
 import type { JSX } from 'preact';
-import { loadTaskContext, putContext, searchPaths } from '../../../api/settings';
+import { getContext } from '../../../api/preplanning';
+import { putContext, searchPaths } from '../../../api/settings';
 import { Button, ChipInput, CodeRef, Collapsible, ResourceView, TextField, Toolbar, useDialogs, useToast } from '../../../components';
 import { useT } from '../../../i18n/i18n';
 import { rpc } from '../../../rpc/rpcClient';
@@ -108,7 +109,7 @@ function RawContext({ data }: { readonly data: WorkspaceContext }): JSX.Element 
 
 function TaskSection({ active }: { readonly active: boolean }): JSX.Element {
   const t = useT();
-  const context = useResource('context', 'task', loadTaskContext, { active, refetchOnState: false });
+  const context = useResource('context', 'task', getContext, { active, refetchOnState: false });
   return (
     <SectionShell sectionKey="task" scope="workspace">
       <SubSection title={t('labels.claude')}>

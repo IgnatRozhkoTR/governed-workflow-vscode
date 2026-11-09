@@ -11,6 +11,7 @@ interface ThreadEntry {
   readonly thread: vscode.CommentThread;
   code: CodeThread;
   signature: string;
+  readonly isPinnedToCreationUri: boolean;
 }
 
 // Keeps one editor thread per root comment and updates it in place, so polling never makes threads blink or duplicate.
@@ -39,11 +40,12 @@ export class CodeThreadSet implements vscode.Disposable {
   }
 
   adopt(draft: vscode.CommentThread, code: CodeThread, canonicalUri: vscode.Uri): void {
-    if (this.entries.has(code.root.id) || draft.uri.toString() !== canonicalUri.toString()) {
+    if (this.entries.has(code.root.id)) {
       draft.dispose();
       return;
     }
-    this.entries.set(code.root.id, this.present(draft, code));
+    const isPinned = draft.uri.toString() !== canonicalUri.toString();
+    this.entries.set(code.root.id, this.present(draft, code, isPinned));
   }
 
   rootIdOf(thread: vscode.CommentThread): number | undefined {
@@ -90,21 +92,21 @@ export class CodeThreadSet implements vscode.Disposable {
 
   private upsert(uri: vscode.Uri, code: CodeThread): void {
     const existing = this.entries.get(code.root.id);
-    if (existing !== undefined && existing.thread.uri.toString() === uri.toString()) {
+    if (existing !== undefined && (existing.isPinnedToCreationUri || existing.thread.uri.toString() === uri.toString())) {
       updateEntry(existing, code);
       return;
     }
     existing?.thread.dispose();
     const thread = this.controller.createCommentThread(uri, toEditorRange(code.lines ?? FIRST_LINE), []);
-    this.entries.set(code.root.id, this.present(thread, code));
+    this.entries.set(code.root.id, this.present(thread, code, false));
   }
 
-  private present(thread: vscode.CommentThread, code: CodeThread): ThreadEntry {
+  private present(thread: vscode.CommentThread, code: CodeThread, isPinnedToCreationUri: boolean): ThreadEntry {
     thread.comments = threadComments(code);
     thread.canReply = true;
     applyResolvedState(thread, code.root.resolved);
     setRange(thread, code.lines === undefined ? undefined : toEditorRange(code.lines));
-    return { thread, code, signature: threadSignature(code) };
+    return { thread, code, signature: threadSignature(code), isPinnedToCreationUri };
   }
 
   private removeAllExcept(liveIds: ReadonlySet<number>): void {

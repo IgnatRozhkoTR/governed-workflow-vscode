@@ -10,11 +10,11 @@ import { ExecutionFlowCard } from './ExecutionFlowCard';
 import { ExecutionPlanCard } from './ExecutionPlanCard';
 import { ScopeCard } from './ScopeCard';
 
-function usePlanNavigationAction(nav: TabProps['nav'], active: boolean): void {
+export function usePlanNavigationAction(nav: TabProps['nav'], active: boolean): void {
   const t = useT();
   const dialogs = useDialogs();
   const actions = usePlanStatusActions();
-  const handledNav = useRef(nav);
+  const handledNav = useRef<TabProps['nav'] | undefined>(undefined);
   useEffect(() => {
     if (!active || handledNav.current === nav || nav.action === undefined) {
       return;

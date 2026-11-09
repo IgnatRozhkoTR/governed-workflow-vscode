@@ -82,3 +82,49 @@ describe('Commentable', () => {
     await waitFor(() => expect(document.querySelector('.gw-comment-count')?.textContent).toBe('2'));
   });
 });
+
+describe('Commentable thread mutations', () => {
+  function openThread(): void {
+    render(<Commentable scope="plan" target="Task: Build"><span>Build</span></Commentable>);
+    fireEvent.click(document.querySelector('.gw-comment-icon') as Element);
+  }
+
+  function apiRequests(): { method: string; path: string; body?: unknown }[] {
+    return posted
+      .filter((message) => message.kind === 'request' && message.method === 'api.request')
+      .map((message) => (message as { params: { method: string; path: string; body?: unknown } }).params);
+  }
+
+  it('reply_shouldPostToReplyEndpoint_andRefreshState', async () => {
+    openThread();
+    const input = document.querySelector('.gw-thread-reply textarea') as HTMLTextAreaElement;
+
+    fireEvent.input(input, { target: { value: 'agreed' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(apiRequests()).toHaveLength(1));
+    answerRequests();
+
+    expect(apiRequests()[0]).toMatchObject({ method: 'POST', path: '/api/ws/proj/feature/x/comments/1/reply', body: { text: 'agreed' } });
+    await waitFor(() => expect(posted.some((message) => message.kind === 'request' && message.method === 'state.refresh')).toBe(true));
+  });
+
+  it('resolve_shouldPutResolvedTrue_forOpenThread', async () => {
+    openThread();
+
+    fireEvent.click(screen.getByText('buttons.resolve'));
+    await waitFor(() => expect(apiRequests()).toHaveLength(1));
+    answerRequests();
+
+    expect(apiRequests()[0]).toMatchObject({ method: 'PUT', path: '/api/ws/proj/feature/x/comments/1/resolve', body: { resolved: true } });
+  });
+
+  it('unresolve_shouldPutResolvedFalse_forResolvedThread', async () => {
+    openThread();
+
+    fireEvent.click(screen.getByText('buttons.unresolve'));
+    await waitFor(() => expect(apiRequests()).toHaveLength(1));
+    answerRequests();
+
+    expect(apiRequests()[0]).toMatchObject({ method: 'PUT', path: '/api/ws/proj/feature/x/comments/2/resolve', body: { resolved: false } });
+  });
+});

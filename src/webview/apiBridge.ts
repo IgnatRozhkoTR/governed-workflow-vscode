@@ -2,7 +2,7 @@ import type { ApiClient } from '../api/client';
 import { HTTP_METHODS, type ApiRequest, type ApiResponse, type HttpMethod, type QueryValue } from '../shared/protocol';
 import { RpcHandlerError } from './rpcHost';
 
-const API_PATH_PATTERN = /^\/api\/[A-Za-z0-9._~%\-/]+$/;
+const API_PATH_PATTERN = /^\/api\/[A-Za-z0-9._~%!'()*\-/]+$/;
 const DOT_SEGMENTS = new Set(['.', '..']);
 const FORBIDDEN_PATH_CODE = 'forbidden_path';
 

@@ -229,9 +229,15 @@
       },
       {
         "command": "governedWorkflow.toggleYolo",
-        "title": "Toggle YOLO Mode",
+        "title": "Enable YOLO Mode",
         "category": "Governed Workflow",
         "icon": "$(rocket)"
+      },
+      {
+        "command": "governedWorkflow.disableYolo",
+        "title": "Disable YOLO Mode",
+        "category": "Governed Workflow",
+        "icon": "$(check)"
       },
       {
         "command": "governedWorkflow.notifyClaude",
@@ -442,8 +448,13 @@
         },
         {
           "command": "governedWorkflow.toggleYolo",
-          "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace",
-          "group": "1_workspace@3"
+          "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace && !governedWorkflow.yolo",
+          "group": "navigation@3"
+        },
+        {
+          "command": "governedWorkflow.disableYolo",
+          "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace && governedWorkflow.yolo",
+          "group": "navigation@3"
         },
         {
           "command": "governedWorkflow.notifyClaude",
@@ -613,6 +624,7 @@
     "watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit && tsc --noEmit -p webview-ui",
     "test": "vitest run",
+    "harness": "node scripts/harness/server.mjs",
     "package": "vsce package",
     "vscode:prepublish": "node scripts/build.mjs --production"
   },
