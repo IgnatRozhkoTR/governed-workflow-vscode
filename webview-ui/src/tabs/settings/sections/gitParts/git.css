@@ -1,0 +1,44 @@
+.gw-git { display: flex; flex-direction: column; gap: 12px; }
+.gw-git-desc { margin: 0; color: var(--gw-muted); }
+.gw-git-title { margin: 0; font-size: 1.15em; }
+.gw-git-form { display: flex; flex-direction: column; gap: 10px; max-width: 520px; }
+.gw-git-field { display: flex; flex-direction: column; gap: 3px; }
+.gw-git-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gw-git-inline .gw-input { flex: 1; min-width: 140px; }
+.gw-git-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
+.gw-git-mono { font-family: var(--gw-mono); }
+
+.gw-git-list { display: flex; flex-direction: column; gap: 4px; }
+.gw-git-pr { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 3px; }
+.gw-git-pr:hover { background: var(--vscode-list-hoverBackground); }
+.gw-git-link {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--vscode-textLink-foreground);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gw-git-link:hover { color: var(--vscode-textLink-activeForeground); text-decoration: underline; }
+
+.gw-git-repo { border: 1px solid var(--gw-border); border-radius: 4px; padding: 6px 8px; }
+.gw-git-repo-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gw-git-repo-identity { display: flex; flex-direction: column; min-width: 120px; }
+.gw-git-repo-name { font-weight: 600; }
+.gw-git-repo-path { color: var(--gw-muted); font-size: 0.9em; font-family: var(--gw-mono); }
+.gw-git-repo-base { width: 150px; }
+.gw-git-override { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.gw-git-override-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gw-accent); display: inline-block; margin-left: 4px; }
+
+.gw-git-convert { border: 1px dashed var(--gw-border); border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.gw-git-convert-row { display: flex; align-items: center; gap: 10px; }
+.gw-git-convert-check { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.gw-git-convert-base { width: 150px; }
+
+.gw-git-rules textarea { font-family: var(--gw-mono); min-height: 220px; }

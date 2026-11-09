@@ -15,15 +15,23 @@ import type {
   FileEntry,
   GateResult,
   NewComment,
+  PasteImageResult,
   PlanStatus,
   Project,
+  ProjectRepo,
+  ProjectSettings,
   ReviewComment,
   Scratchpad,
   ScratchpadContent,
   SetPhaseResult,
+  SetupModule,
+  SetupStartRequest,
+  SetupStatus,
   StateFetchResult,
+  TerminalSession,
   TerminalStartResponse,
   TerminalStatus,
+  VerificationProfile,
   WorkspaceContext,
   WorkspaceRef,
   WorkspaceState,
@@ -37,6 +45,7 @@ interface RequestSpec {
   readonly path: string;
   readonly query?: QueryParams;
   readonly body?: unknown;
+  readonly form?: FormData;
   readonly headers?: Readonly<Record<string, string>>;
 }
 
@@ -213,16 +222,87 @@ export class ApiClient {
     return this.requestJson({ method: 'GET', path: wsPath(workspace, 'terminal/status') });
   }
 
-  async terminalKill(workspace: WorkspaceRef): Promise<void> {
-    await this.send({ method: 'POST', path: wsPath(workspace, 'terminal/kill') });
+  async terminalKill(workspace: WorkspaceRef, kind: string = CLAUDE_SESSION_KIND): Promise<void> {
+    await this.send({ method: 'POST', path: wsPath(workspace, 'terminal/kill'), body: { kind } });
   }
 
-  async terminalSocketUrl(workspace: WorkspaceRef): Promise<string> {
+  listTerminalSessions(): Promise<TerminalSession[]> {
+    return this.requestJson({ method: 'GET', path: '/api/terminal/sessions' });
+  }
+
+  async killTerminalSession(name: string): Promise<void> {
+    await this.send({ method: 'POST', path: `/api/terminal/sessions/${encodeURIComponent(name)}/kill` });
+  }
+
+  uploadPasteImage(workspace: WorkspaceRef, bytes: Uint8Array, mime: string, filename: string): Promise<PasteImageResult> {
+    const form = new FormData();
+    form.append('image', new Blob([new Uint8Array(bytes)], { type: mime }), filename);
+    return this.requestJson({ method: 'POST', path: wsPath(workspace, 'terminal/paste-image'), form });
+  }
+
+  async writeFile(workspace: WorkspaceRef, path: string, content: string): Promise<void> {
+    await this.send({ method: 'PUT', path: wsPath(workspace, 'file'), body: { path, content } });
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    await this.send({ method: 'DELETE', path: `/api/projects/${encodeURIComponent(projectId)}` });
+  }
+
+  async archiveWorkspace(workspace: WorkspaceRef): Promise<void> {
+    await this.send({ method: 'PUT', path: wsPath(workspace, 'archive') });
+  }
+
+  getProjectSettings(projectId: string): Promise<ProjectSettings> {
+    return this.requestJson({ method: 'GET', path: `/api/projects/${encodeURIComponent(projectId)}/settings` });
+  }
+
+  async listProjectRepos(projectId: string): Promise<ProjectRepo[]> {
+    const path = `/api/projects/${encodeURIComponent(projectId)}/repos`;
+    const body = await this.requestJson<{ repos: ProjectRepo[] }>({ method: 'GET', path });
+    return body.repos;
+  }
+
+  async listSetupModules(): Promise<SetupModule[]> {
+    const body = await this.requestJson<{ modules: SetupModule[] }>({ method: 'GET', path: '/api/modules' });
+    return body.modules;
+  }
+
+  async listEnabledModules(): Promise<string[]> {
+    const body = await this.requestJson<{ modules: string[] }>({ method: 'GET', path: '/api/modules/enabled' });
+    return body.modules;
+  }
+
+  async listVerificationProfiles(): Promise<VerificationProfile[]> {
+    const body = await this.requestJson<{ profiles: VerificationProfile[] }>({ method: 'GET', path: '/api/verification/profiles' });
+    return body.profiles;
+  }
+
+  async setupStart(request: SetupStartRequest): Promise<void> {
+    await this.send({ method: 'POST', path: '/api/setup/start', body: request });
+  }
+
+  setupStatus(): Promise<SetupStatus> {
+    return this.requestJson({ method: 'GET', path: '/api/setup/status' });
+  }
+
+  terminalSessionSocketUrl(name: string): Promise<string> {
+    return this.socketUrl(`/ws/terminal-session/${encodeURIComponent(name)}`);
+  }
+
+  setupSocketUrl(): Promise<string> {
+    return this.socketUrl('/ws/setup-terminal');
+  }
+
+  terminalSocketUrl(workspace: WorkspaceRef): Promise<string> {
+    return this.socketUrl(terminalSocketPath(workspace));
+  }
+
+  private async socketUrl(path: string): Promise<string> {
     const token = await this.token();
     if (!token) {
       throw new AuthRequiredError('No admin token is stored. Sign in to the admin panel first.');
     }
-    const url = new URL(this.buildUrl(terminalSocketPath(workspace)));
+    const url = new URL(this.buildUrl(path));
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     url.searchParams.set('token', token);
     return url.toString();
@@ -248,6 +328,9 @@ export class ApiClient {
     const token = await this.token();
     if (token) {
       headers.Authorization = `Bearer ${token}`;
+    }
+    if (spec.form !== undefined) {
+      return { method: spec.method, headers, body: spec.form };
     }
     if (spec.body === undefined) {
       return { method: spec.method, headers };

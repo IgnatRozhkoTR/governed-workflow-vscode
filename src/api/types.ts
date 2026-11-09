@@ -53,11 +53,25 @@ export interface CreateWorkspaceRequest {
   repos?: number[];
 }
 
+export interface BaseSyncResult {
+  branch?: string;
+  attempted: boolean;
+  updated: boolean;
+  reason?: string;
+}
+
+export interface AttachedRepo {
+  rel_path: string;
+  base_sync?: BaseSyncResult;
+}
+
 export interface CreateWorkspaceResponse {
   workspace: string;
   working_dir: string;
   branch: string;
   command: string;
+  base_sync?: BaseSyncResult;
+  attached_repos?: AttachedRepo[];
 }
 
 export interface Reply {
@@ -332,4 +346,56 @@ export interface FileSnippet {
   end?: number;
   highlight_start?: number;
   highlight_end?: number;
+}
+
+export type ReviewMode = 'manual' | 'integration' | 'files_integration' | 'full';
+
+export interface ProjectSettings {
+  fast_mode_default: boolean;
+  yolo_mode_default: boolean;
+  review_mode_default: ReviewMode;
+  project_type: ProjectType;
+}
+
+export interface ProjectRepo {
+  id: number;
+  rel_path: string;
+  name: string;
+  base_branch: string | null;
+  enabled: boolean;
+}
+
+export interface TerminalSession {
+  name: string;
+  attached: boolean;
+  command?: string;
+}
+
+export interface PasteImageResult {
+  ok: boolean;
+  mode: 'path' | 'clipboard';
+  path: string;
+}
+
+export interface SetupModule {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface VerificationProfile {
+  id: number;
+  name: string;
+  language?: string;
+}
+
+export interface SetupStartRequest {
+  modules: string[];
+  languages: number[];
+  custom_languages: unknown[];
+}
+
+export interface SetupStatus {
+  running: boolean;
+  session: string;
 }

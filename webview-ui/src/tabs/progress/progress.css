@@ -1,0 +1,25 @@
+.gw-progress { display: flex; flex-direction: column; gap: 4px; }
+
+.gw-progress-times {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--gw-muted);
+  font-size: 0.9em;
+}
+
+.gw-progress-body { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+
+.gw-progress-details {
+  padding-top: 10px;
+  border-top: 1px solid var(--gw-border);
+}
+
+.gw-progress-details-title {
+  margin: 0 0 6px;
+  color: var(--gw-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

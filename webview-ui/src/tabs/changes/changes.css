@@ -1,0 +1,90 @@
+.gw-changes { display: flex; flex-direction: column; gap: 8px; }
+.gw-changes-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gw-changes-filter { flex: 1; min-width: 160px; max-width: 360px; }
+
+.gw-changes-files {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--gw-border);
+  border-radius: 4px;
+  background: var(--gw-card);
+  padding: 2px 0;
+}
+
+.gw-changes-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding-right: 8px;
+  cursor: pointer;
+}
+
+.gw-changes-row:hover { background: var(--vscode-list-hoverBackground); }
+.gw-changes-file:focus-visible { outline: 1px solid var(--gw-accent); outline-offset: -1px; }
+.gw-changes-dir { color: var(--gw-muted); font-weight: 600; }
+.gw-changes-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.gw-changes-moved { font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw-changes-spacer { flex: 1; }
+.gw-changes-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gw-warning); flex-shrink: 0; }
+.gw-changes-action { opacity: 0; transition: opacity 0.1s; }
+.gw-changes-row:hover .gw-changes-action,
+.gw-changes-row:focus-within .gw-changes-action { opacity: 1; }
+.gw-changes-stat { display: flex; gap: 6px; font-family: var(--gw-mono); font-size: 0.9em; flex-shrink: 0; }
+.gw-changes-add { color: var(--gw-success); }
+.gw-changes-del { color: var(--gw-danger); }
+
+.gw-changes-history { display: grid; grid-template-columns: minmax(120px, 200px) 1fr; gap: 10px; align-items: start; }
+.gw-changes-branches { display: flex; flex-direction: column; gap: 1px; max-height: 320px; overflow-y: auto; }
+.gw-changes-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--gw-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gw-changes-branch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw-changes-branch:hover { background: var(--vscode-list-hoverBackground); }
+.gw-changes-branch-active { background: var(--vscode-list-inactiveSelectionBackground); font-weight: 600; }
+
+.gw-changes-commits { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; min-width: 0; }
+.gw-changes-commit {
+  display: grid;
+  grid-template-columns: 84px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.gw-changes-commit:hover { background: var(--vscode-list-hoverBackground); }
+.gw-changes-commit-active { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+.gw-changes-commit-selected { outline: 1px solid var(--gw-accent); outline-offset: -1px; }
+.gw-changes-sha { display: inline-flex; align-items: center; gap: 5px; font-family: var(--gw-mono); }
+.gw-changes-ahead { width: 7px; height: 7px; border-radius: 50%; background: var(--gw-info); }
+.gw-changes-subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw-changes-author,
+.gw-changes-date { font-size: 0.9em; white-space: nowrap; }
+
+.gw-changes-squash-list {
+  margin: 0 0 10px;
+  padding: 6px 10px 6px 24px;
+  max-height: 120px;
+  overflow: auto;
+  border: 1px solid var(--gw-border);
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+
+@media (max-width: 640px) {
+  .gw-changes-history { grid-template-columns: 1fr; }
+  .gw-changes-commit { grid-template-columns: 70px 1fr; }
+  .gw-changes-author,
+  .gw-changes-date { display: none; }
+}

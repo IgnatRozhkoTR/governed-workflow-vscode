@@ -1,7 +1,16 @@
 import * as vscode from 'vscode';
 import type { ApiClient } from '../api/client';
 import { ApiError } from '../api/errors';
-import type { ContextUpdate, Project, ProjectType, WorkspaceContext, WorkspaceRef } from '../api/types';
+import type {
+  BaseSyncResult,
+  ContextUpdate,
+  CreateWorkspaceRequest,
+  Project,
+  ProjectType,
+  ReviewMode,
+  WorkspaceContext,
+  WorkspaceRef,
+} from '../api/types';
 import type { TokenStore } from '../config/tokenStore';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import { remoteFileUriParts } from '../fs/uris';
@@ -24,6 +33,8 @@ const THIS_WINDOW = 'This window';
 const NEW_WINDOW = 'New window';
 const RESUME_SESSION = 'Resume Claude session';
 const WORKFLOW_MODES = ['standard', 'fast'] as const;
+const REVIEW_MODES: readonly ReviewMode[] = ['manual', 'integration', 'files_integration', 'full'];
+const TRIVIAL_SYNC_REASONS = ['no-local-branch', 'not-remote-based'];
 const PROJECT_TYPES: readonly ProjectType[] = ['single', 'multi'];
 
 export interface WorkspaceCommandDeps {
@@ -131,22 +142,98 @@ async function pickSourceBranch(deps: WorkspaceCommandDeps, project: Project): P
   return vscode.window.showQuickPick([...branches.local, ...branches.remote], { placeHolder: 'Create from branch' });
 }
 
+interface WorkspaceChoices {
+  readonly branch: string;
+  readonly source: string;
+  readonly workflowMode: string;
+  readonly worktree: boolean;
+  readonly reviewMode: ReviewMode;
+  readonly yoloMode: boolean;
+  readonly repos: number[];
+}
+
 async function createWorkspace(deps: WorkspaceCommandDeps, preselected: Project | undefined): Promise<void> {
   const project = preselected ?? (await pickProject(deps));
-  const branch = project && (await vscode.window.showInputBox({ prompt: 'New branch name', ignoreFocusOut: true }));
-  const source = branch ? await pickSourceBranch(deps, project) : undefined;
-  const mode = source ? await vscode.window.showQuickPick([...WORKFLOW_MODES], { placeHolder: 'Workflow mode' }) : undefined;
-  if (!project || !branch || !source || !mode) {
+  const choices = project && (await promptWorkspaceChoices(deps, project));
+  if (!project || !choices) {
     return;
   }
   const ticketName = await vscode.window.showInputBox({ prompt: 'Ticket name (optional)' });
   const ticketContext = await vscode.window.showInputBox({ prompt: 'Ticket context (optional)' });
-  await deps.client.createWorkspace(project.id, { branch, source, worktree: true, workflow_mode: mode });
-  const ref = { projectId: project.id, branch };
+  const response = await deps.client.createWorkspace(project.id, toCreateRequest(choices, project));
+  const ref = { projectId: project.id, branch: choices.branch };
+  notifyBaseSync(response.base_sync, choices.source);
+  response.attached_repos?.forEach((repo) => notifyBaseSync(repo.base_sync, repo.rel_path));
   await applyInitialContext(deps, ref, ticketName, ticketContext);
   deps.projectsTree.refresh();
   deps.active.select(ref);
   await offerResume(ref);
+}
+
+function toCreateRequest(choices: WorkspaceChoices, project: Project): CreateWorkspaceRequest {
+  return {
+    branch: choices.branch,
+    source: choices.source,
+    worktree: choices.worktree,
+    workflow_mode: choices.workflowMode,
+    review_mode: choices.reviewMode,
+    yolo_mode: choices.yoloMode,
+    repos: project.project_type === 'multi' ? choices.repos : undefined,
+  };
+}
+
+async function promptWorkspaceChoices(deps: WorkspaceCommandDeps, project: Project): Promise<WorkspaceChoices | undefined> {
+  const branch = await vscode.window.showInputBox({ prompt: 'New branch name', ignoreFocusOut: true });
+  const source = branch ? await pickSourceBranch(deps, project) : undefined;
+  const workflowMode = source ? await vscode.window.showQuickPick([...WORKFLOW_MODES], { placeHolder: 'Workflow mode' }) : undefined;
+  const settings = workflowMode ? await deps.client.getProjectSettings(project.id) : undefined;
+  const worktree = settings && (await pickYesNo('Create a git worktree for this workspace?', true));
+  const reviewMode = worktree === undefined ? undefined : await pickReviewMode(settings?.review_mode_default);
+  const yoloMode = reviewMode && (await pickYesNo('Enable YOLO mode?', settings?.yolo_mode_default ?? false));
+  const repos = yoloMode === undefined ? undefined : await pickRepos(deps, project);
+  if (!branch || !source || !workflowMode || worktree === undefined || !reviewMode || yoloMode === undefined || !repos) {
+    return undefined;
+  }
+  return { branch, source, workflowMode, worktree, reviewMode, yoloMode, repos };
+}
+
+async function pickYesNo(placeHolder: string, defaultValue: boolean): Promise<boolean | undefined> {
+  const items = [
+    { label: 'Yes', value: true },
+    { label: 'No', value: false },
+  ].map((item) => ({ ...item, description: item.value === defaultValue ? 'default' : undefined }));
+  const picked = await vscode.window.showQuickPick(items, { placeHolder });
+  return picked?.value;
+}
+
+async function pickReviewMode(defaultMode: ReviewMode | undefined): Promise<ReviewMode | undefined> {
+  const items = REVIEW_MODES.map((mode) => ({ label: mode, description: mode === defaultMode ? 'project default' : undefined }));
+  const picked = await vscode.window.showQuickPick(items, { placeHolder: 'Review mode' });
+  return picked?.label;
+}
+
+async function pickRepos(deps: WorkspaceCommandDeps, project: Project): Promise<number[] | undefined> {
+  if (project.project_type !== 'multi') {
+    return [];
+  }
+  const repos = await deps.client.listProjectRepos(project.id);
+  const items = repos.map((repo) => ({ label: repo.rel_path, description: repo.base_branch ?? undefined, id: repo.id }));
+  const picked = await vscode.window.showQuickPick(items, { placeHolder: 'Repositories to attach', canPickMany: true });
+  return picked?.map((item) => item.id);
+}
+
+function notifyBaseSync(baseSync: BaseSyncResult | undefined, fallbackBranch: string): void {
+  if (baseSync === undefined) {
+    return;
+  }
+  const branch = baseSync.branch ?? fallbackBranch;
+  if (baseSync.updated) {
+    void vscode.window.showInformationMessage(`Base branch ${branch} was updated from origin.`);
+    return;
+  }
+  if (baseSync.reason !== undefined && !TRIVIAL_SYNC_REASONS.includes(baseSync.reason)) {
+    void vscode.window.showWarningMessage(`Base branch ${branch} was not updated: ${baseSync.reason}.`);
+  }
 }
 
 async function applyInitialContext(

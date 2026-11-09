@@ -1,0 +1,16 @@
+.gw-research { display: flex; flex-direction: column; gap: 10px; }
+.gw-research-status { display: flex; justify-content: flex-end; }
+.gw-research-count { color: var(--gw-muted); font-size: 0.9em; font-weight: normal; }
+.gw-research-discussion-link { border: none; background: none; padding: 0; cursor: pointer; }
+.gw-research-summary { margin-bottom: 10px; white-space: pre-wrap; color: var(--gw-muted); }
+.gw-research-notes { margin-bottom: 10px; padding: 6px 10px; border-left: 2px solid var(--gw-warning); background: var(--gw-bg); }
+.gw-research-finding { padding: 8px 0; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--gw-border); }
+.gw-research-claim { font-weight: 600; white-space: pre-wrap; }
+.gw-research-details { white-space: pre-wrap; color: var(--gw-muted); }
+.gw-research-proof { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gw-research-proof-web { flex-direction: column; align-items: flex-start; }
+.gw-research-quote { flex-basis: 100%; }
+.gw-research-web-quote { margin: 0; padding: 4px 10px; border-left: 3px solid var(--gw-warning); color: var(--gw-muted); font-style: italic; white-space: pre-wrap; }
+.gw-research-proof-file { font-family: var(--gw-mono); color: var(--gw-muted); }
+.gw-research-diff-description { flex-basis: 100%; color: var(--gw-muted); white-space: pre-wrap; }
+.gw-research-empty { color: var(--gw-muted); }

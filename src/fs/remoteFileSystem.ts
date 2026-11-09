@@ -6,6 +6,10 @@ import { parseRemoteFileUri } from './uris';
 
 const HTTP_BAD_REQUEST = 400;
 
+export const REMOTE_FS_READONLY = false;
+
+const BINARY_WRITE_MESSAGE = 'Only UTF-8 text files can be saved to a remote worktree.';
+
 export class RemoteFileSystem implements vscode.FileSystemProvider {
   private readonly changeEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
 
@@ -55,8 +59,15 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
     throw vscode.FileSystemError.NoPermissions(uri);
   }
 
-  writeFile(uri: vscode.Uri): never {
-    throw vscode.FileSystemError.NoPermissions(uri);
+  async writeFile(uri: vscode.Uri, content: Uint8Array): Promise<void> {
+    const { workspace, relPath } = parseRemoteFileUri(uri);
+    const text = decodeUtf8(content);
+    try {
+      await this.client.writeFile(workspace, relPath, text);
+    } catch (error) {
+      throw toFileSystemError(uri, error);
+    }
+    this.changeEmitter.fire([{ type: vscode.FileChangeType.Changed, uri }]);
   }
 
   delete(uri: vscode.Uri): never {
@@ -69,6 +80,14 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
 
   dispose(): void {
     this.changeEmitter.dispose();
+  }
+}
+
+function decodeUtf8(content: Uint8Array): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(content);
+  } catch {
+    throw vscode.FileSystemError.NoPermissions(BINARY_WRITE_MESSAGE);
   }
 }
 

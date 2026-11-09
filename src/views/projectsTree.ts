@@ -7,6 +7,9 @@ export const PROJECTS_VIEW_ID = 'governedWorkflow.projects';
 export const SELECT_WORKSPACE_COMMAND = 'governedWorkflow.selectWorkspace';
 export const SET_TOKEN_COMMAND = 'governedWorkflow.setToken';
 export const WORKSPACE_CONTEXT_VALUE = 'gwWorkspace';
+export const ARCHIVED_WORKSPACE_CONTEXT_VALUE = 'gwWorkspaceArchived';
+export const SHOW_ARCHIVED_CONTEXT_KEY = 'governedWorkflow.showArchived';
+const FAST_WORKFLOW_MODE = 'fast';
 const ARCHIVED_STATUS = 'archived';
 
 export class ProjectItem extends vscode.TreeItem {
@@ -26,10 +29,16 @@ export class WorkspaceItem extends vscode.TreeItem {
     super(summary.branch, vscode.TreeItemCollapsibleState.None);
     this.ref = { projectId, branch: summary.branch };
     this.id = `workspace:${projectId}:${summary.branch}`;
-    this.description = summary.phase;
-    this.contextValue = WORKSPACE_CONTEXT_VALUE;
+    this.description = describeWorkspace(summary);
+    this.contextValue = summary.status === ARCHIVED_STATUS ? ARCHIVED_WORKSPACE_CONTEXT_VALUE : WORKSPACE_CONTEXT_VALUE;
     this.command = { command: SELECT_WORKSPACE_COMMAND, title: 'Select Workspace', arguments: [this.ref] };
   }
+}
+
+function describeWorkspace(summary: WorkspaceSummary): string {
+  const badge = summary.workflow_mode === FAST_WORKFLOW_MODE ? 'fast' : summary.session_id ? 'session' : undefined;
+  const parts = [summary.status === ARCHIVED_STATUS ? 'archived' : summary.phase, badge];
+  return parts.filter((part) => part !== undefined).join(' · ');
 }
 
 export class ErrorItem extends vscode.TreeItem {
@@ -54,10 +63,22 @@ export class ProjectsTreeProvider implements vscode.TreeDataProvider<ProjectsTre
 
   readonly onDidChangeTreeData: vscode.Event<void> = this.changeEmitter.event;
 
+  private archivedShown = false;
+
   constructor(private readonly client: ApiClient) {}
 
   refresh(): void {
     this.changeEmitter.fire();
+  }
+
+  get isShowingArchived(): boolean {
+    return this.archivedShown;
+  }
+
+  toggleShowArchived(): boolean {
+    this.archivedShown = !this.archivedShown;
+    this.refresh();
+    return this.archivedShown;
   }
 
   getTreeItem(element: ProjectsTreeElement): vscode.TreeItem {
@@ -78,7 +99,7 @@ export class ProjectsTreeProvider implements vscode.TreeDataProvider<ProjectsTre
   private async listWorkspaceItems(project: Project): Promise<WorkspaceItem[]> {
     const workspaces = await this.client.listWorkspaces(project.id);
     return workspaces
-      .filter((workspace) => workspace.status !== ARCHIVED_STATUS)
+      .filter((workspace) => this.archivedShown || workspace.status !== ARCHIVED_STATUS)
       .map((workspace) => new WorkspaceItem(workspace, project.id));
   }
 }

@@ -12,6 +12,8 @@ const HTTP_SERVICE_UNAVAILABLE = 503;
 const ANSI_RED = '\x1b[31m';
 const ANSI_RESET = '\x1b[0m';
 const START_CONFIRM_ACTION = 'Kill and start fresh';
+const KILL_CONFIRM_ACTION = 'Kill session';
+const DEFAULT_TERMINAL_LABEL = 'Claude';
 
 export interface ActiveWorkspaceSource {
   readonly workspace: WorkspaceRef | undefined;
@@ -65,7 +67,10 @@ export class ClaudeTerminal implements vscode.Pseudoterminal {
   readonly onDidWrite: vscode.Event<string> = this.writeEmitter.event;
   readonly onDidClose: vscode.Event<number | void> = this.closeEmitter.event;
 
-  constructor(private readonly socketUrl: string) {}
+  constructor(
+    private readonly socketUrl: string,
+    private readonly label: string = DEFAULT_TERMINAL_LABEL,
+  ) {}
 
   open(initialDimensions: vscode.TerminalDimensions | undefined): void {
     this.dimensions = initialDimensions;
@@ -74,7 +79,7 @@ export class ClaudeTerminal implements vscode.Pseudoterminal {
     socket.on('open', () => this.sendResize());
     socket.on('message', (data, isBinary) => this.handleFrame(isBinary ? data.toString('binary') : data.toString()));
     socket.on('error', (error) => this.finish(`Connection error: ${error.message}`));
-    socket.on('close', () => this.finish('Connection closed. The Claude session keeps running.'));
+    socket.on('close', () => this.finish('Connection closed. The session keeps running.'));
   }
 
   close(): void {
@@ -98,7 +103,7 @@ export class ClaudeTerminal implements vscode.Pseudoterminal {
       if (error !== undefined) {
         this.hasServerError = true;
         this.writeEmitter.fire(`${ANSI_RED}${error}${ANSI_RESET}\r\n`);
-        void vscode.window.showErrorMessage(`Claude terminal: ${error}`);
+        void vscode.window.showErrorMessage(`${this.label} terminal: ${error}`);
         this.socket?.close();
         return;
       }
@@ -124,13 +129,17 @@ export class ClaudeTerminal implements vscode.Pseudoterminal {
     }
     this.isFinished = true;
     if (!this.isDisposedByUser && !this.hasServerError) {
-      void vscode.window.showWarningMessage(`Claude terminal: ${message}`);
+      void vscode.window.showWarningMessage(`${this.label} terminal: ${message}`);
     }
     this.closeEmitter.fire();
   }
 }
 
-class ClaudeTerminalManager {
+export interface ClaudeTerminalHandle {
+  sendText(ref: WorkspaceRef, text: string): boolean;
+}
+
+class ClaudeTerminalManager implements ClaudeTerminalHandle {
   private readonly terminals = new Map<string, vscode.Terminal>();
 
   constructor(private readonly deps: ClaudeTerminalDeps) {}
@@ -159,6 +168,34 @@ class ClaudeTerminalManager {
     this.terminals.get(workspaceKey(ref))?.dispose();
     this.terminals.delete(workspaceKey(ref));
     await this.runSessionCall(() => this.deps.client.terminalStart(ref), ref);
+  }
+
+  sendText(ref: WorkspaceRef, text: string): boolean {
+    const terminal = this.terminals.get(workspaceKey(ref));
+    if (terminal === undefined) {
+      return false;
+    }
+    terminal.sendText(text, false);
+    return true;
+  }
+
+  async kill(ref: WorkspaceRef): Promise<void> {
+    const choice = await vscode.window.showWarningMessage(
+      `Kill the Claude session for ${ref.branch}? Unsaved session state is lost.`,
+      { modal: true },
+      KILL_CONFIRM_ACTION,
+    );
+    if (choice !== KILL_CONFIRM_ACTION) {
+      return;
+    }
+    try {
+      await this.deps.client.terminalKill(ref, 'claude');
+    } catch (error) {
+      this.reportFailure(error);
+      return;
+    }
+    this.terminals.get(workspaceKey(ref))?.dispose();
+    this.terminals.delete(workspaceKey(ref));
   }
 
   private async confirmStartFresh(ref: WorkspaceRef): Promise<boolean> {
@@ -211,7 +248,7 @@ class ClaudeTerminalManager {
   }
 }
 
-export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: ClaudeTerminalDeps): void {
+export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: ClaudeTerminalDeps): ClaudeTerminalHandle {
   const manager = new ClaudeTerminalManager(deps);
   const resolve = (arg: RefArgument): WorkspaceRef | undefined => {
     const target = unwrapRef(arg) ?? deps.activeWorkspace.workspace;
@@ -235,5 +272,12 @@ export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: C
         await manager.startFresh(target, options.skipConfirm === true);
       }
     }),
+    vscode.commands.registerCommand('governedWorkflow.killClaude', async (arg?: RefArgument) => {
+      const target = resolve(arg);
+      if (target !== undefined) {
+        await manager.kill(target);
+      }
+    }),
   );
+  return manager;
 }

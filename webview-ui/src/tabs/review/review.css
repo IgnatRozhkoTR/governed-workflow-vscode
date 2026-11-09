@@ -1,0 +1,24 @@
+.gw-review {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gw-review-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gw-review-resolve-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gw-review-threads {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

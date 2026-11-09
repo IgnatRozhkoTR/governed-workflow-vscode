@@ -1,0 +1,180 @@
+.gw-phase {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gw-phase-bar {
+  display: flex;
+  gap: 3px;
+  padding: 8px 0 12px;
+}
+
+.gw-phase-segment {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.gw-phase-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--vscode-progressBar-background);
+  opacity: 0.25;
+}
+
+.gw-phase-track-done {
+  opacity: 1;
+  background: var(--gw-success);
+}
+
+.gw-phase-track-current {
+  opacity: 1;
+  background: var(--gw-accent);
+  box-shadow: 0 0 0 1px var(--gw-accent);
+}
+
+.gw-phase-track-gate {
+  box-shadow: inset 0 -3px 0 var(--gw-warning);
+}
+
+.gw-phase-caption {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 0.8em;
+  color: var(--gw-muted);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gw-phase-caption-current {
+  color: var(--gw-fg);
+  font-weight: 600;
+}
+
+.gw-phase-caption-gate {
+  color: var(--gw-warning);
+}
+
+.gw-phase-bar-compact {
+  padding: 2px 0;
+}
+
+.gw-phase-history,
+.gw-phase-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gw-phase-history-entry,
+.gw-phase-session {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--gw-border);
+}
+
+.gw-phase-history-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gw-phase-approval {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.gw-verification-run {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gw-verification-run-header,
+.gw-verification-step-header,
+.gw-pipeline-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gw-verification-step {
+  padding: 6px 8px;
+  border: 1px solid var(--gw-border);
+  border-radius: 4px;
+}
+
+.gw-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gw-pipeline-heading {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 4px;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  color: var(--gw-muted);
+}
+
+.gw-pipeline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.gw-pipeline-name {
+  font-family: var(--gw-mono);
+}
+
+.gw-pipeline-error {
+  flex-basis: 100%;
+  color: var(--gw-danger);
+  font-size: 0.9em;
+}
+
+.gw-pipeline-icon-done { color: var(--gw-success); }
+.gw-pipeline-icon-failed { color: var(--gw-danger); }
+.gw-pipeline-icon-running { color: var(--gw-info); }
+.gw-pipeline-icon-pending,
+.gw-pipeline-icon-skipped { color: var(--gw-muted); }
+
+.gw-verification-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gw-verification-config-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.gw-verification-command {
+  color: var(--gw-muted);
+  font-family: var(--gw-mono);
+}
+
+.gw-verification-assign {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

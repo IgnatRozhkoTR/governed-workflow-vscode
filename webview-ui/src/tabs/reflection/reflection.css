@@ -1,0 +1,26 @@
+.gw-reflection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gw-reflection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gw-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gw-proposal-reason {
+  color: var(--gw-muted);
+}
+
+.gw-proposal-actions {
+  display: inline-flex;
+  gap: 6px;
+}
