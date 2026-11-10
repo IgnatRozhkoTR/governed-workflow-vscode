@@ -1,14 +1,19 @@
 import type { ComponentChildren, JSX } from 'preact';
 import { useT } from '../i18n/i18n';
 import type { Resource } from '../store/hooks';
-import { EmptyState } from './EmptyState';
+import { EmptyState, type EmptyStateAction } from './EmptyState';
 import { ErrorBanner } from './ErrorBanner';
 import { Spinner } from './Spinner';
+
+export interface ResourceEmptyMessage {
+  readonly message: string;
+  readonly action?: EmptyStateAction;
+}
 
 export interface ResourceViewProps<T> {
   readonly resource: Resource<T>;
   readonly empty?: (data: T) => boolean;
-  readonly emptyMessage?: string;
+  readonly emptyMessage?: string | ResourceEmptyMessage;
   readonly children: (data: T) => ComponentChildren;
 }
 
@@ -21,7 +26,13 @@ export function ResourceView<T>({ resource, empty, emptyMessage, children }: Res
   return (
     <>
       {error !== undefined && <ErrorBanner error={error} onRetry={reload} />}
-      {empty?.(data) === true ? <EmptyState icon="info" message={emptyMessage ?? t('vsc.common.empty')} /> : children(data)}
+      {empty?.(data) === true ? <ResourceEmpty emptyMessage={emptyMessage ?? t('vsc.common.empty')} /> : children(data)}
     </>
   );
+}
+
+function ResourceEmpty({ emptyMessage }: { readonly emptyMessage: string | ResourceEmptyMessage }): JSX.Element {
+  return typeof emptyMessage === 'string'
+    ? <EmptyState icon="info" message={emptyMessage} />
+    : <EmptyState icon="info" message={emptyMessage.message} action={emptyMessage.action} />;
 }

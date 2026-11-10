@@ -55,3 +55,10 @@ export function filesProgress(files: Readonly<Record<string, PipelineFileResult>
   const done = entries.filter((file) => file.status === 'done' || file.status === 'failed').length;
   return { done, total: entries.length };
 }
+
+// Whether the workspace has yet to reach the phase where the review pipeline starts, by the server's own phase order.
+export function isBeforeReviewStart(sequence: readonly string[], phase: string): boolean {
+  const currentIndex = sequence.indexOf(phase);
+  const startIndex = sequence.indexOf(REVIEW_START_PHASE);
+  return currentIndex >= 0 && startIndex >= 0 && currentIndex < startIndex;
+}

@@ -1,4 +1,5 @@
 import type { ApiRequest, ApiResponse, HttpMethod, Locale, QueryValue } from '../shared/protocol';
+import { normalizeWorkspaceState } from '../shared/normalizeState';
 import { encodeBranchPath, wsPath } from '../shared/paths';
 import { ApiError, AuthRequiredError } from './errors';
 import type {
@@ -127,7 +128,7 @@ export class ApiClient {
     if (response.status === HTTP_NOT_MODIFIED) {
       return { notModified: true };
     }
-    const state = await parseJson<WorkspaceState>(response);
+    const state = normalizeWorkspaceState(await parseJson<WorkspaceState>(response));
     return { notModified: false, state, etag: response.headers.get('ETag') ?? undefined };
   }
 

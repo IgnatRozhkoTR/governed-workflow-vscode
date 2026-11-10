@@ -31,15 +31,87 @@ function trapFocus(event: KeyboardEvent, dialog: HTMLElement): void {
   }
 }
 
+// In priority order: an explicit autofocus wins over the first field, which wins over the dialog itself.
+const INITIAL_FOCUS_SELECTORS = ['[data-autofocus]', '[autofocus]', 'input:not([disabled]), textarea:not([disabled]), select:not([disabled])'];
+const FOCUS_FALLBACK_SELECTOR = '#gw-main';
+
+function initialFocusTarget(dialog: HTMLElement): HTMLElement {
+  for (const selector of INITIAL_FOCUS_SELECTORS) {
+    const match = dialog.querySelector<HTMLElement>(selector);
+    if (match !== null) {
+      return match;
+    }
+  }
+  return dialog;
+}
+
+const REFOCUS_WAIT_LIMIT_MS = 30_000;
+
+function isDisabled(element: HTMLElement): boolean {
+  return (element as HTMLButtonElement).disabled === true;
+}
+
+function isUsableTrigger(element: Element | null): element is HTMLElement {
+  return element instanceof HTMLElement && element.isConnected && element !== document.body;
+}
+
+function isFocusParkedOn(placeholder: HTMLElement | null): boolean {
+  const active = document.activeElement;
+  return active === null || active === document.body || active === placeholder;
+}
+
+// A trigger stays disabled while the action it confirmed runs; focus waits on the main area and returns once the trigger is usable again,
+// unless the user has moved focus elsewhere in the meantime.
+function focusWhenReEnabled(trigger: HTMLElement, placeholder: HTMLElement | null): void {
+  const observer = new MutationObserver(() => {
+    if (!trigger.isConnected) {
+      stop();
+    } else if (!isDisabled(trigger)) {
+      stop();
+      if (isFocusParkedOn(placeholder)) {
+        trigger.focus();
+      }
+    }
+  });
+  const timer = setTimeout(() => stop(), REFOCUS_WAIT_LIMIT_MS);
+  function stop(): void {
+    observer.disconnect();
+    clearTimeout(timer);
+  }
+  observer.observe(trigger, { attributes: true, attributeFilter: ['disabled'] });
+}
+
+function restoreFocus(previous: Element | null): void {
+  if (isUsableTrigger(previous) && !isDisabled(previous)) {
+    previous.focus();
+    return;
+  }
+  const placeholder = document.querySelector<HTMLElement>(FOCUS_FALLBACK_SELECTOR);
+  placeholder?.focus({ preventScroll: true });
+  if (isUsableTrigger(previous)) {
+    focusWhenReEnabled(previous, placeholder);
+  }
+}
+
+// Captured while rendering: child effects (an autofocused button) run before ours and would already have moved focus.
+function useFocusBeforeOpen(isOpen: boolean): { readonly current: Element | null } {
+  const previous = useRef<Element | null>(null);
+  const wasOpen = useRef(false);
+  if (isOpen && !wasOpen.current) {
+    previous.current = document.activeElement;
+  }
+  wasOpen.current = isOpen;
+  return previous;
+}
+
 function useInitialFocus(isOpen: boolean, dialogRef: { readonly current: HTMLElement | null }): void {
+  const previous = useFocusBeforeOpen(isOpen);
   useEffect(() => {
     if (!isOpen || dialogRef.current === null) {
       return undefined;
     }
-    const previous = document.activeElement as HTMLElement | null;
-    const target = dialogRef.current.querySelector<HTMLElement>('[autofocus], input, textarea, select') ?? dialogRef.current;
-    target.focus();
-    return () => previous?.focus();
+    initialFocusTarget(dialogRef.current).focus();
+    return () => restoreFocus(previous.current);
   }, [isOpen]);
 }
 

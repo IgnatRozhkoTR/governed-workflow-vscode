@@ -2,6 +2,7 @@ import type { Plan } from '@api-types';
 import type { Locale } from '@shared/protocol';
 import { useEffect, useState } from 'preact/hooks';
 import { rpc } from '../rpc/rpcClient';
+import { SERVER_RU_TRANSLATION_GAPS } from './serverTranslationGaps';
 
 export interface ModuleMessages {
   readonly en: Readonly<Record<string, string>>;
@@ -17,11 +18,30 @@ type Params = Readonly<Record<string, string | number>>;
 
 const EXECUTION_STEP_PATTERN = /^3\.(\d+)\.(\d+)$/;
 const EXECUTION_GROUP_PATTERN = /^3\.(\d+)$/;
+const PHASE_NAME_KEYS: Readonly<Record<string, string>> = {
+  '0': 'phase.init',
+  '1.0': 'phase.assessment',
+  '1.1': 'phase.research',
+  '1.2': 'phase.proving',
+  '1.3': 'phase.impactAnalysis',
+  '1.4': 'phase.preplanningReview',
+  '2.0': 'phase.planning',
+  '2.1': 'phase.planReview',
+  '4.0': 'phase.agenticReview',
+  '4.1': 'phase.addressFix',
+  '4.2': 'phase.finalApproval',
+  '5.1': 'phase.reflection',
+  '5.2': 'phase.manualImplementation',
+  '6': 'phase.done',
+};
+const EXECUTION_STEP_NAME_KEYS: readonly string[] = ['phase.implementation', 'phase.validation', 'phase.fixes', 'vsc.phase.commitApproval', 'phase.commit'];
 
 let activeLocale: Locale = 'en';
 let serverMessages: Readonly<Record<string, string>> = {};
 const moduleMessages: ModuleMessages[] = [];
 const changeListeners = new Set<() => void>();
+let messagesVersion = 0;
+let latestLocaleRequest = 0;
 
 export function t(key: string, params?: Params): string {
   const message = lookup(key);
@@ -29,10 +49,12 @@ export function t(key: string, params?: Params): string {
 }
 
 export function useT(): typeof t {
-  const [, setVersion] = useState(0);
+  const [, setRenderedVersion] = useState(messagesVersion);
   useEffect(() => {
-    const listener = (): void => setVersion((version) => version + 1);
+    const listener = (): void => setRenderedVersion(messagesVersion);
     changeListeners.add(listener);
+    // Messages that loaded between render and this effect would otherwise never reach the component.
+    listener();
     return () => {
       changeListeners.delete(listener);
     };
@@ -47,6 +69,9 @@ export function currentLocale(): Locale {
 export function setServerMessages(locale: Locale, messages: Record<string, string>): void {
   activeLocale = locale;
   serverMessages = messages;
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = locale;
+  }
   notifyChange();
 }
 
@@ -57,15 +82,23 @@ export function registerModuleMessages(m: ModuleMessages): void {
   }
 }
 
-export async function loadLocaleMessages(locale: Locale): Promise<void> {
-  setServerMessages(locale, await rpc.call('i18n.load', { locale }));
+// Overlapping switches (user pick, server echo, bootstrap) resolve out of order; only the newest request may apply.
+export async function loadLocaleMessages(locale: Locale): Promise<boolean> {
+  latestLocaleRequest += 1;
+  const request = latestLocaleRequest;
+  const messages = await rpc.call('i18n.load', { locale });
+  if (request !== latestLocaleRequest) {
+    return false;
+  }
+  setServerMessages(locale, messages);
+  return true;
 }
 
-// D8: labels come only from server data (phase registry names, plan sub-phase names, server i18n templates).
+// D8: names come from server i18n keys (mirroring the web's PHASE_NAMES) or the server phase registry; ids are the last resort.
 export function phaseLabel(phase: string, plan: Plan | undefined, available?: readonly PhaseName[]): string {
-  const registered = available?.find((entry) => entry.id === phase);
-  if (registered !== undefined) {
-    return registered.name;
+  const named = translatedName(PHASE_NAME_KEYS[phase]) ?? registryName(phase, available);
+  if (named !== undefined) {
+    return named;
   }
   const step = EXECUTION_STEP_PATTERN.exec(phase);
   if (step !== null) {
@@ -77,10 +110,18 @@ export function phaseLabel(phase: string, plan: Plan | undefined, available?: re
 
 function executionStepLabel(group: string, step: string, plan: Plan | undefined, available?: readonly PhaseName[]): string {
   const groupName = executionGroupName(group, plan) ?? `3.${group}`;
-  const stepName = available?.find((entry) => entry.id === `3.x.${step}`)?.name ?? step;
+  const stepName = translatedName(EXECUTION_STEP_NAME_KEYS[Number(step)]) ?? registryName(`3.x.${step}`, available) ?? step;
   return lookup('phase.subPhaseName') === undefined
     ? `${groupName}: ${stepName}`
     : t('phase.subPhaseName', { groupName, step: stepName });
+}
+
+function translatedName(key: string | undefined): string | undefined {
+  return key === undefined || lookup(key) === undefined ? undefined : t(key);
+}
+
+function registryName(phase: string, available: readonly PhaseName[] | undefined): string | undefined {
+  return available?.find((entry) => entry.id === phase)?.name;
 }
 
 function executionGroupName(group: string, plan: Plan | undefined): string | undefined {
@@ -88,9 +129,15 @@ function executionGroupName(group: string, plan: Plan | undefined): string | und
 }
 
 function lookup(key: string): string | undefined {
-  return serverMessages[key]
+  return serverMessage(key)
     ?? findModuleMessage((messages) => messages[activeLocale][key])
     ?? findModuleMessage((messages) => messages.en[key]);
+}
+
+function serverMessage(key: string): string | undefined {
+  const message = serverMessages[key];
+  const gap = SERVER_RU_TRANSLATION_GAPS[key];
+  return activeLocale === 'ru' && gap !== undefined && message === gap.untranslated ? gap.ru : message;
 }
 
 function findModuleMessage(read: (messages: ModuleMessages) => string | undefined): string | undefined {
@@ -111,5 +158,6 @@ function interpolate(message: string, params: Params | undefined): string {
 }
 
 function notifyChange(): void {
+  messagesVersion += 1;
   changeListeners.forEach((listener) => listener());
 }

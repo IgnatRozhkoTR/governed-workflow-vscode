@@ -1,4 +1,5 @@
 import type { WorkspaceState } from '../api/types';
+import { isApprovalBlocker } from '../comments/commentMapping';
 import type { NavTarget } from '../shared/navigation';
 
 export const PLAN_PENDING_CONTEXT_VALUE = 'gwPlanPending';
@@ -49,7 +50,7 @@ function phaseItem(state: WorkspaceState): LauncherItem {
 
 function gateItems(state: WorkspaceState): LauncherItem[] {
   const gate = state.pending_gate;
-  if (gate === null) {
+  if (gate === null || gate === undefined) {
     return [];
   }
   return [{ id: 'gate', label: 'Gate waiting', description: gate.phase, icon: 'shield', nav: { tab: 'phase' } }];
@@ -88,7 +89,7 @@ function researchItem(state: WorkspaceState): LauncherItem {
 function reviewItem(state: WorkspaceState): LauncherItem {
   const openCount = Object.entries(state.comments)
     .filter(([key]) => key.startsWith(REVIEW_COMMENT_KEY_PREFIX))
-    .reduce((sum, [, roots]) => sum + roots.filter((root) => !root.resolved).length, 0);
+    .reduce((sum, [, roots]) => sum + roots.filter(isApprovalBlocker).length, 0);
   return { id: 'review', label: 'Review threads', description: `${openCount} open`, icon: 'comment', nav: { tab: 'review' } };
 }
 

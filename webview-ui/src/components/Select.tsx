@@ -10,11 +10,13 @@ export interface SelectProps {
   readonly options: readonly SelectOption[];
   readonly onChange: (v: string) => void;
   readonly disabled?: boolean;
+  readonly title?: string;
+  readonly ariaLabel?: string;
 }
 
-export function Select({ value, options, onChange, disabled = false }: SelectProps): JSX.Element {
+export function Select({ value, options, onChange, disabled = false, title, ariaLabel }: SelectProps): JSX.Element {
   return (
-    <select class="gw-select" value={value} disabled={disabled} onChange={(event) => onChange(event.currentTarget.value)}>
+    <select class="gw-select" title={title} aria-label={ariaLabel ?? title} value={value} disabled={disabled} onChange={(event) => onChange(event.currentTarget.value)}>
       {options.map((option) => (
         <option key={option.value} value={option.value}>{option.label}</option>
       ))}

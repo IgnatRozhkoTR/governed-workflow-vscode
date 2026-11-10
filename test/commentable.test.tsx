@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { ReviewComment, WorkspaceState } from '@api-types';
 import type { WebviewMessage } from '@shared/protocol';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
@@ -49,6 +51,18 @@ describe('Commentable', () => {
     expect(document.querySelector('.gw-comment-count')?.textContent).toBe('1');
   });
 
+  it('render_shouldNameButtonWithOpenCount_whenTargetHasComments', () => {
+    render(<Commentable scope="plan" target="Task: Build"><span>Build</span></Commentable>);
+
+    expect(document.querySelector('.gw-comment-icon')?.getAttribute('aria-label')).toBe('comments.title (1)');
+  });
+
+  it('render_shouldNameButtonAsAddComment_whenTargetHasNoOpenComments', () => {
+    render(<Commentable scope="plan" target="Other"><span>Other</span></Commentable>);
+
+    expect(document.querySelector('.gw-comment-icon')?.getAttribute('aria-label')).toBe('comments.addComment');
+  });
+
   it('click_shouldOpenInlineThreadWithExistingComments', () => {
     render(<Commentable scope="plan" target="Task: Build"><span>Build</span></Commentable>);
 
@@ -97,6 +111,7 @@ describe('Commentable thread mutations', () => {
 
   it('reply_shouldPostToReplyEndpoint_andRefreshState', async () => {
     openThread();
+    fireEvent.click(screen.getByText('buttons.reply'));
     const input = document.querySelector('.gw-thread-reply textarea') as HTMLTextAreaElement;
 
     fireEvent.input(input, { target: { value: 'agreed' } });
@@ -111,7 +126,7 @@ describe('Commentable thread mutations', () => {
   it('resolve_shouldPutResolvedTrue_forOpenThread', async () => {
     openThread();
 
-    fireEvent.click(screen.getByText('buttons.resolve'));
+    fireEvent.click(screen.getByText('vsc.common.resolve'));
     await waitFor(() => expect(apiRequests()).toHaveLength(1));
     answerRequests();
 
@@ -126,5 +141,36 @@ describe('Commentable thread mutations', () => {
     answerRequests();
 
     expect(apiRequests()[0]).toMatchObject({ method: 'PUT', path: '/api/ws/proj/feature/x/comments/2/resolve', body: { resolved: false } });
+  });
+});
+
+describe('Commentable idle affordance', () => {
+  const css = readFileSync(resolve(__dirname, '../webview-ui/src/styles/components.css'), 'utf8');
+
+  it('render_shouldKeepAddButtonFocusableButUnpinned_whenTargetHasNoComments', () => {
+    render(<Commentable scope="plan" target="Other"><span>Other</span></Commentable>);
+
+    const button = document.querySelector('.gw-comment-icon') as HTMLButtonElement;
+    button.focus();
+
+    expect(document.querySelector('.gw-commentable-pinned')).toBeNull();
+    expect(document.querySelector('.gw-comment-count')).toBeNull();
+    expect(document.activeElement).toBe(button);
+    expect(button.tabIndex).toBe(0);
+  });
+
+  it('render_shouldPinAffordanceWithCount_whenTargetHasComments', () => {
+    render(<Commentable scope="plan" target="Task: Build"><span>Build</span></Commentable>);
+
+    expect(document.querySelector('.gw-commentable-pinned')).not.toBeNull();
+    expect(document.querySelector('.gw-comment-count')?.textContent).toBe('1');
+  });
+
+  it('stylesheet_shouldShowIdleCommentIconFaint_andRevealItOnHoverFocusAndTouch', () => {
+    expect(css).toMatch(/:where\(\.gw-comment-icon:not\([^)]*\)\) \{ opacity: 0\.4;/);
+    expect(css).not.toMatch(/\.gw-commentable-affordance \{[^}]*(display: none|opacity: 0)/);
+    expect(css).toContain('.gw-comment-icon:focus-visible');
+    expect(css).toMatch(/\.gw-commentable\):focus-within \.gw-comment-icon \{ opacity: 1; \}/);
+    expect(css).toMatch(/@media \(hover: none\), \(pointer: coarse\) \{\s*:where\(\.gw-comment-icon[^}]*opacity: 1;/);
   });
 });

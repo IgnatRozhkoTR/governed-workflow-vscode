@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.0",
+  "version": "0.2.15",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -37,7 +37,7 @@
           "type": "number",
           "default": 10,
           "minimum": 3,
-          "description": "How often the workspace state is polled while the VS Code window is focused."
+          "description": "How often the workspace state is polled while the VS Code window is focused and the Workspace Control panel is not visible (the panel polls every 3 seconds while visible)."
         },
         "governedWorkflow.terminal.maximize": {
           "type": "boolean",

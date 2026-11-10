@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPhaseBar } from '../../../webview-ui/src/tabs/phase/phaseBarModel';
+import { buildPhaseBar, isUserGate } from '../../../webview-ui/src/tabs/phase/phaseBarModel';
 
 const SEQUENCE = ['0', '1.0', '2.1', '3.1.0', '3.1.1', '3.1.2', '3.1.3', '3.2.0', '3.2.1', '4.0'];
 const labelOf = (phase: string): string => `Name ${phase}`;
@@ -21,6 +21,19 @@ describe('buildPhaseBar', () => {
     expect(segments.map((segment) => segment.state)).toEqual(['done', 'done', 'done', 'current', 'upcoming', 'upcoming']);
   });
 
+  it('buildPhaseBar_shouldNameTheCurrentSubPhaseGroupOnly', () => {
+    const segments = buildPhaseBar(SEQUENCE, '3.1.2', undefined, labelOf);
+
+    expect(segments[3].caption).toBe('3.1 Name 3.1');
+    expect(segments[4].caption).toBe('3.2');
+  });
+
+  it('buildPhaseBar_shouldCaptionCurrentGroupById_whenItHasNoName', () => {
+    const segments = buildPhaseBar(SEQUENCE, '3.1.2', undefined, (phase) => phase);
+
+    expect(segments[3].caption).toBe('3.1');
+  });
+
   it('buildPhaseBar_shouldMarkNothingDone_whenCurrentPhaseIsNotInSequence', () => {
     const segments = buildPhaseBar(SEQUENCE, 'custom', undefined, labelOf);
 
@@ -37,14 +50,30 @@ describe('buildPhaseBar', () => {
     expect(buildPhaseBar(SEQUENCE, '2.1', undefined, labelOf).some((segment) => segment.isGate)).toBe(false);
   });
 
-  it('buildPhaseBar_shouldShortenLongCaption_whenLabelExceedsLimit', () => {
+  it('buildPhaseBar_shouldKeepFullCaption_whenLabelIsLong', () => {
     const segments = buildPhaseBar(['1.4'], '1.4', undefined, () => 'A very long phase label');
 
-    expect(segments[0].caption).toBe('A very long…');
+    expect(segments[0].caption).toBe('A very long phase label');
     expect(segments[0].title).toBe('A very long phase label');
   });
 
   it('buildPhaseBar_shouldReturnEmpty_whenSequenceEmpty', () => {
     expect(buildPhaseBar([], '0', undefined, labelOf)).toEqual([]);
+  });
+
+  it('buildPhaseBar_shouldMarkSegmentsContainingUserGates_whenSequenceHasGates', () => {
+    const segments = buildPhaseBar(SEQUENCE, '0', undefined, labelOf);
+
+    expect(segments.filter((segment) => segment.hasUserGate).map((segment) => segment.key)).toEqual(['2.1', '3.1']);
+  });
+});
+
+describe('isUserGate', () => {
+  it('isUserGate_shouldBeTrue_forWebUserGates', () => {
+    expect(['1.4', '2.1', '4.2', '3.2.3'].map(isUserGate)).toEqual([true, true, true, true]);
+  });
+
+  it('isUserGate_shouldBeFalse_forOtherPhases', () => {
+    expect(['3.2.4', '1.1', '3.2', '6'].map(isUserGate)).toEqual([false, false, false, false]);
   });
 });

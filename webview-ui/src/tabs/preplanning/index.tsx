@@ -1,12 +1,12 @@
 import type { TabModule } from '../types';
 import { PreplanningTab } from './PreplanningTab';
-import { countOpenDiscussions } from './discussionLogic';
+import { countOpenDiscussions, provenDiscussionIds } from './discussionLogic';
 import { PREPLANNING_MESSAGES } from './messages';
 import { useStore } from '../../store/hooks';
 import './preplanning.css';
 
 function usePreplanningBadge(): { count: number; tone: 'warning' } | undefined {
-  const open = useStore((s) => countOpenDiscussions(s.state?.discussions ?? []));
+  const open = useStore((s) => countOpenDiscussions(s.state?.discussions ?? [], provenDiscussionIds(s.state?.research ?? [])));
   return open > 0 ? { count: open, tone: 'warning' } : undefined;
 }
 

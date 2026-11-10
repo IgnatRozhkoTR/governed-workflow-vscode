@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ApiError } from '../api/errors';
 import type { DiffFile, DiffMode, DiffResponse, WorkspaceRef, WorkspaceState } from '../api/types';
 import { baseFileUriParts } from '../fs/uris';
+import { joinRepoPath } from '../shared/paths';
 import type { ChangeKind, DiffFileRef, DiffSource, OpenAllChangesArgs, OpenDiffArgs } from '../shared/protocol';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import type { StatePoller } from '../state/statePoller';
@@ -14,6 +15,8 @@ const DELETED_STATUS = 'deleted';
 const ADDED_MARKER = /^--- \/dev\/null$/m;
 const DELETED_MARKER = /^\+\+\+ \/dev\/null$/m;
 const WORKSPACE_SIDE_LABEL = 'workspace';
+const FULL_SHA_REF = /^([0-9a-f]{40})(.*)$/i;
+const SHORT_SHA_LENGTH = 8;
 
 export type { ChangeKind };
 
@@ -99,7 +102,7 @@ export function workspaceSideUri(locator: WorkspaceLocator, context: DiffContext
 
 export async function openFileDiff(locator: WorkspaceLocator, context: DiffContext, file: DiffFile): Promise<void> {
   const [, left, right] = diffSides(locator, context, file);
-  const title = `${file.path} (${context.baseRef} ↔ workspace)`;
+  const title = `${file.path} (${sidesLabel(context.baseRef)})`;
   await vscode.commands.executeCommand('vscode.diff', left, right, title);
 }
 
@@ -108,7 +111,7 @@ export async function openAllChanges(
   context: DiffContext,
   files: readonly DiffFile[],
 ): Promise<void> {
-  const title = `${context.workspace.branch} (${context.baseRef} ↔ ${WORKSPACE_SIDE_LABEL})`;
+  const title = `${context.workspace.branch} (${sidesLabel(context.baseRef)})`;
   await showChangesEditor(title, files.map((file) => diffSides(locator, context, file)));
 }
 
@@ -127,7 +130,7 @@ async function showChangesEditor(title: string, resources: readonly DiffResource
 export async function openDiffFor(locator: WorkspaceLocator, snapshot: WorkspaceSnapshot, args: OpenDiffArgs): Promise<void> {
   const refs = diffRefsFor(args.source, snapshot.state);
   const [, left, right] = sidesFor(locator, snapshot, refs, args.file);
-  const title = `${args.file.path} (${refs.leftRef} ↔ ${refs.rightRef ?? WORKSPACE_SIDE_LABEL})`;
+  const title = `${args.file.path} (${sidesLabel(refs.leftRef, refs.rightRef)})`;
   await vscode.commands.executeCommand('vscode.diff', left, right, title);
 }
 
@@ -137,7 +140,7 @@ export async function openAllChangesFor(
   args: OpenAllChangesArgs,
 ): Promise<void> {
   const refs = diffRefsFor(args.source, snapshot.state);
-  const title = `${snapshot.workspace.branch} (${refs.leftRef} ↔ ${refs.rightRef ?? WORKSPACE_SIDE_LABEL})`;
+  const title = `${snapshot.workspace.branch} (${sidesLabel(refs.leftRef, refs.rightRef)})`;
   await showChangesEditor(title, args.files.map((file) => sidesFor(locator, snapshot, refs, file)));
 }
 
@@ -202,8 +205,13 @@ function baseUri(snapshot: WorkspaceSnapshot, refs: DiffRefs, ref: string, relPa
   return vscode.Uri.from(baseFileUriParts({ workspace: snapshot.workspace, relPath, baseRef: ref, repo: refs.repo }));
 }
 
-export function joinRepoPath(repo: string | undefined, relPath: string): string {
-  return repo ? `${repo.replace(/\/+$/, '')}/${relPath.replace(/^\/+/, '')}` : relPath;
+function sidesLabel(leftRef: string, rightRef?: string): string {
+  return `${shortRef(leftRef)} ↔ ${rightRef === undefined ? WORKSPACE_SIDE_LABEL : shortRef(rightRef)}`;
+}
+
+function shortRef(ref: string): string {
+  const match = FULL_SHA_REF.exec(ref);
+  return match === null ? ref : `${match[1].slice(0, SHORT_SHA_LENGTH)}${match[2]}`;
 }
 
 function emptyDocumentUri(relPath: string): vscode.Uri {

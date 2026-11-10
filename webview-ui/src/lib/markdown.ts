@@ -18,11 +18,15 @@ import yaml from 'highlight.js/lib/languages/yaml';
 import { Marked, type TokenizerAndRendererExtension } from 'marked';
 
 export const MERMAID_SLOT_CLASS = 'gw-mermaid-slot';
-export const MERMAID_SOURCE_ATTRIBUTE = 'data-mermaid-source';
+// DOMPurify drops attribute values containing "-->" (SAFE_FOR_XML), which every flowchart edge has, so the source travels URI-encoded.
+const MERMAID_ENCODED_ATTRIBUTE = 'data-mermaid-encoded';
+export const TABLE_SCROLL_CLASS = 'gw-table-scroll';
 
 const LANGUAGES = { bash, css, diff, go, java, javascript, json, kotlin, markdown, python, shell, sql, typescript, xml, yaml };
 const SPAN_TAG_PATTERN = /<span[^>]*>|<\/span>/g;
 const SPAN_CLOSE = '</span>';
+const LONE_SURROGATE_PATTERN = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+const REPLACEMENT_CHARACTER = '\uFFFD';
 
 Object.entries(LANGUAGES).forEach(([name, language]) => hljs.registerLanguage(name, language));
 
@@ -50,6 +54,7 @@ function createMarked(isMermaidEnabled: boolean): Marked {
     extensions: [literalTilde],
     renderer: {
       code: (code: string, language: string | undefined) => renderCodeBlock(code, language, isMermaidEnabled),
+      table: (header: string, body: string) => `<div class="${TABLE_SCROLL_CLASS}"><table><thead>${header}</thead>${body === '' ? '' : `<tbody>${body}</tbody>`}</table></div>`,
     },
   });
   return instance;
@@ -61,9 +66,29 @@ const markedPlain = createMarked(false);
 function renderCodeBlock(code: string, language: string | undefined, isMermaidEnabled: boolean): string {
   const name = (language ?? '').trim().split(/\s+/)[0] ?? '';
   if (isMermaidEnabled && name === 'mermaid') {
-    return `<div class="${MERMAID_SLOT_CLASS}" ${MERMAID_SOURCE_ATTRIBUTE}="${escapeHtml(code)}"></div>`;
+    return `<div class="${MERMAID_SLOT_CLASS}" ${MERMAID_ENCODED_ATTRIBUTE}="${encodeMermaidSource(code)}"></div>`;
   }
   return `<pre class="gw-code"><code class="hljs">${highlightCode(code, name)}</code></pre>`;
+}
+
+// encodeURIComponent throws on lone surrogates, which would abort rendering of the whole markdown document.
+function encodeMermaidSource(code: string): string {
+  return encodeURIComponent(code.replace(LONE_SURROGATE_PATTERN, REPLACEMENT_CHARACTER));
+}
+
+export class MermaidSourceError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.name = 'MermaidSourceError';
+  }
+}
+
+export function readMermaidSource(slot: Element): string {
+  try {
+    return decodeURIComponent(slot.getAttribute(MERMAID_ENCODED_ATTRIBUTE) ?? '');
+  } catch (error) {
+    throw new MermaidSourceError(error);
+  }
 }
 
 export function renderMarkdown(source: string, isMermaidEnabled = true): string {

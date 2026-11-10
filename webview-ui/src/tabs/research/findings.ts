@@ -106,6 +106,10 @@ export function findingCommentTarget(summary: string): string {
   return `Finding: ${summary.substring(0, SUMMARY_TARGET_LENGTH)}`;
 }
 
+export function findingCountKey(count: number): string {
+  return count === 1 ? 'vsc.research.findingOne' : 'research.findingCount';
+}
+
 export function abbreviateCommit(commit: string): string {
   return commit.substring(0, COMMIT_ABBREVIATION_LENGTH);
 }

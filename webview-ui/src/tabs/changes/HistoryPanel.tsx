@@ -14,12 +14,18 @@ export interface HistoryPanelProps {
   readonly activeCommit: string | undefined;
   readonly onSelectRef: (ref: string | undefined) => void;
   readonly onSelectCommit: (sha: string) => void;
+  readonly canRewrite: boolean;
+}
+
+interface ActionAvailability {
+  readonly disabled: boolean;
+  readonly title?: string;
 }
 
 const MUTATION_OPTIONS = { invalidates: ['diff', 'history'], refreshState: true } as const;
 
 export function HistoryPanel(props: HistoryPanelProps): JSX.Element {
-  const { commits, branches, activeRef, activeCommit, onSelectRef, onSelectCommit } = props;
+  const { commits, branches, activeRef, activeCommit, onSelectRef, onSelectCommit, canRewrite } = props;
   const t = useT();
   const dialogs = useDialogs();
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -29,10 +35,22 @@ export function HistoryPanel(props: HistoryPanelProps): JSX.Element {
   const squash = useMutation(historySquash, { ...MUTATION_OPTIONS, successToast: t('vsc.changes.squashed') });
   const target = renameTarget(commits, activeCommit);
   const picked = selectedCommitsInOrder(selected, commits);
-  const squashable = canSquash(selected, commits);
+  // The server rewrites history only in the workspace's own working tree, so per-repository rewrites are not offered.
+  const availability = (isAllowed: boolean, deniedKey: string): ActionAvailability => {
+    if (!canRewrite) {
+      return { disabled: true, title: t('vsc.changes.rewriteSingleRepoOnly') };
+    }
+    return isAllowed ? { disabled: false } : { disabled: true, title: t(deniedKey) };
+  };
+  const renameState = availability(canRename(commits, activeCommit), 'vsc.changes.renameOnlyLocal');
+  const undoState = availability(canUndo(commits), 'vsc.changes.undoOnlyLocal');
+  const squashState = availability(canSquash(selected, commits), 'vsc.changes.squashRequires');
 
+  if (commits.length === 0 && activeRef === undefined) {
+    return <BranchWithoutCommits />;
+  }
   const handleClick = (event: MouseEvent, sha: string): void => {
-    if (event.metaKey || event.ctrlKey) {
+    if (canRewrite && (event.metaKey || event.ctrlKey)) {
       setSelected(toggleSelection(selected, sha));
       return;
     }
@@ -79,16 +97,17 @@ export function HistoryPanel(props: HistoryPanelProps): JSX.Element {
     <Card
       id="changes-history"
       title={t('vsc.changes.historyTitle')}
-      subtitle={t('vsc.changes.selectHint')}
+      subtitle={canRewrite ? t('vsc.changes.selectHint') : undefined}
       badge={selected.length > 0 ? <Badge tone="accent" label={t('vsc.changes.selected', { count: selected.length })} /> : undefined}
       actions={
         <>
-          <Button size="sm" variant="secondary" icon="edit" label={t('history.rename')} disabled={!canRename(commits, activeCommit)} title={canRename(commits, activeCommit) ? undefined : t('vsc.changes.renameOnlyLocal')} onClick={runRename} />
-          <Button size="sm" variant="secondary" icon="discard" label={t('history.undo')} disabled={!canUndo(commits)} title={canUndo(commits) ? undefined : t('vsc.changes.undoOnlyLocal')} onClick={runUndo} />
-          <Button size="sm" variant="secondary" icon="git-merge" label={t('history.squash')} disabled={!squashable} title={squashable ? undefined : t('vsc.changes.squashRequires')} onClick={() => setSquashOpen(true)} />
+          <Button size="sm" variant="secondary" icon="edit" label={t('history.rename')} {...renameState} onClick={runRename} />
+          <Button size="sm" variant="secondary" icon="discard" label={t('history.undo')} {...undoState} onClick={runUndo} />
+          <Button size="sm" variant="secondary" icon="git-merge" label={t('history.squash')} {...squashState} onClick={() => setSquashOpen(true)} />
         </>
       }
     >
+      {!canRewrite && <RewriteUnavailableNote />}
       <div class="gw-changes-history">
         <BranchList branches={branches} activeRef={activeRef} onSelect={onSelectRef} />
         <CommitList commits={commits} selected={selected} activeCommit={activeCommit} onClick={handleClick} />
@@ -96,6 +115,21 @@ export function HistoryPanel(props: HistoryPanelProps): JSX.Element {
       {isSquashOpen && <SquashDialog commits={picked} onClose={() => setSquashOpen(false)} onConfirm={confirmSquash} />}
     </Card>
   );
+}
+
+// The current branch has nothing to pick, rename, undo or squash, so the card says that once instead of offering them.
+function BranchWithoutCommits(): JSX.Element {
+  const t = useT();
+  return (
+    <Card id="changes-history" title={t('vsc.changes.historyTitle')}>
+      <EmptyState icon="git-commit" message={t('vsc.changes.noBranchCommits')} />
+    </Card>
+  );
+}
+
+export function RewriteUnavailableNote(): JSX.Element {
+  const t = useT();
+  return <p class="gw-muted gw-changes-note">{t('vsc.changes.rewriteSingleRepoOnly')}</p>;
 }
 
 function BranchList(props: { readonly branches: readonly BranchEntry[]; readonly activeRef: string | undefined; readonly onSelect: (ref: string | undefined) => void }): JSX.Element {
@@ -121,14 +155,14 @@ function BranchList(props: { readonly branches: readonly BranchEntry[]; readonly
   );
 }
 
-interface CommitListProps {
+export interface CommitListProps {
   readonly commits: readonly HistoryCommit[];
   readonly selected: readonly string[];
   readonly activeCommit: string | undefined;
   readonly onClick: (event: MouseEvent, sha: string) => void;
 }
 
-function CommitList({ commits, selected, activeCommit, onClick }: CommitListProps): JSX.Element {
+export function CommitList({ commits, selected, activeCommit, onClick }: CommitListProps): JSX.Element {
   const t = useT();
   if (commits.length === 0) {
     return <EmptyState icon="git-commit" message={t('vsc.changes.noCommits')} />;

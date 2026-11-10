@@ -21,13 +21,13 @@
 .gw-button-md { padding: 4px 12px; }
 .gw-button-sm { padding: 2px 8px; font-size: 0.92em; }
 .gw-button-icon-only { padding: 3px 5px; }
-.gw-button:disabled { opacity: 0.55; cursor: default; }
+.gw-button:disabled { opacity: 0.5; cursor: default; }
 
-.gw-button-primary { background: var(--gw-btn-bg); color: var(--gw-btn-fg); }
+.gw-button-primary { background: var(--gw-btn-bg); color: var(--gw-btn-fg); border-color: var(--vscode-button-border, var(--vscode-contrastBorder, transparent)); }
 .gw-button-primary:not(:disabled):hover { background: var(--gw-btn-hover); }
-.gw-button-secondary { background: var(--gw-btn2-bg); color: var(--gw-btn2-fg); }
+.gw-button-secondary { background: var(--gw-btn2-bg); color: var(--gw-btn2-fg); border-color: var(--vscode-button-border, var(--vscode-contrastBorder, transparent)); }
 .gw-button-secondary:not(:disabled):hover { background: var(--gw-btn2-hover); }
-.gw-button-danger { background: transparent; color: var(--gw-danger); border-color: var(--gw-danger); }
+.gw-button-danger { background: transparent; color: var(--gw-danger-text, var(--gw-danger)); border-color: var(--gw-danger); }
 .gw-button-danger:not(:disabled):hover { background: var(--gw-hover); }
 .gw-button-ghost { background: transparent; color: var(--gw-fg); }
 .gw-button-ghost:not(:disabled):hover { background: var(--gw-hover); }
@@ -83,13 +83,13 @@
   padding: 0 6px;
   border: 1px solid var(--gw-tone);
   border-radius: 9px;
-  color: var(--gw-tone);
+  color: var(--gw-status-text, var(--gw-tone));
   font-size: 0.85em;
   line-height: 1.6;
   white-space: nowrap;
 }
 
-.gw-badge.gw-tone-neutral { color: var(--gw-fg); border-color: var(--gw-border); }
+.gw-badge.gw-tone-neutral { color: var(--gw-fg); border-color: var(--gw-separator); }
 
 .gw-status-dot {
   display: inline-block;
@@ -105,22 +105,33 @@
 .gw-toolbar-end { justify-content: flex-end; }
 .gw-toolbar-between { justify-content: space-between; }
 
-.gw-card {
-  margin: 0 0 12px;
-  border: 1px solid var(--gw-border);
-  border-radius: 4px;
-  background: var(--gw-card);
-  transition: box-shadow 0.3s;
-}
+/* Sections separate by spacing and a header rule; only framed cards (decision areas) draw a box. Nested cards read as a divided list. */
+.gw-card { margin: 0 0 20px; }
+.gw-card .gw-card { margin: 0; border-bottom: 1px solid var(--gw-separator); }
+.gw-card .gw-card:last-child { border-bottom: none; }
+.gw-card-framed { border: 1px solid var(--gw-border); border-radius: 4px; background: var(--gw-card); }
 
-.gw-card-highlight { box-shadow: 0 0 0 2px var(--gw-accent); }
-.gw-card-header { display: flex; align-items: flex-start; gap: 6px; padding: 8px 12px; }
+.gw-card, .gw-anchor-target { scroll-margin-top: calc(var(--gw-sticky-top-height, 0px) + 8px); }
+.gw-card-highlight { animation: gw-anchor-flash 2.5s ease-out; }
+/* A jump target flashes its background only: an accent ring reads as keyboard focus, which only :focus-visible may draw. */
+@keyframes gw-anchor-flash {
+  0%, 60% { background: var(--gw-highlight); }
+}
+.gw-card-header { display: flex; align-items: flex-start; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--gw-separator); }
+.gw-card .gw-card .gw-card-header, .gw-card-framed .gw-card-header { border-bottom: none; }
+.gw-card-framed .gw-card-header { padding: 8px 12px; }
+.gw-card-header-collapsible { cursor: pointer; user-select: none; }
 .gw-card-toggle { border: none; background: none; color: var(--gw-fg); cursor: pointer; padding: 0; }
+.gw-card-toggle:focus-visible { outline: 1px solid var(--gw-accent); }
 .gw-card-titles { flex: 1; min-width: 0; }
-.gw-card-title { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.gw-card-title-text { display: contents; }
+.gw-card-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; row-gap: 4px; font-weight: 600; }
 .gw-card-subtitle { color: var(--gw-muted); font-size: 0.92em; }
+.gw-card-preview { overflow: hidden; color: var(--gw-muted); font-weight: normal; text-overflow: ellipsis; white-space: nowrap; }
 .gw-card-actions { display: flex; gap: 4px; align-items: center; }
-.gw-card-body { padding: 0 12px 10px; }
+.gw-card-body { padding: 10px 0 0; }
+.gw-card .gw-card .gw-card-body { padding: 0 0 8px 22px; }
+.gw-card-framed .gw-card-body { padding: 0 12px 10px; }
 
 .gw-collapsible-summary {
   display: flex;
@@ -217,6 +228,7 @@ textarea.gw-input { resize: vertical; }
   position: relative;
   width: 28px;
   height: 14px;
+  border: 1px solid var(--vscode-contrastBorder, transparent);
   border-radius: 7px;
   background: var(--gw-btn2-bg);
   transition: background 0.15s;
@@ -286,14 +298,17 @@ textarea.gw-input { resize: vertical; }
 .gw-structured-object { margin: 2px 0; }
 .gw-structured-entry dt { font-weight: 600; margin-top: 4px; }
 .gw-structured-entry dd { margin: 0 0 0 12px; }
+.gw-table-scroll { max-width: 100%; margin: 4px 0; overflow-x: auto; }
 .gw-structured-table,
-.gw-markdown table { border-collapse: collapse; margin: 4px 0; }
+.gw-markdown table { border-collapse: collapse; margin: 0; }
 .gw-structured-table th,
 .gw-structured-table td,
 .gw-markdown th,
 .gw-markdown td { padding: 3px 8px; border: 1px solid var(--gw-border); text-align: left; vertical-align: top; }
 
 .gw-markdown { overflow-wrap: anywhere; }
+.gw-markdown td,
+.gw-markdown th { overflow-wrap: normal; word-break: normal; }
 .gw-markdown-compact > :first-child { margin-top: 0; }
 .gw-markdown-compact > :last-child { margin-bottom: 0; }
 .gw-markdown code { padding: 0 3px; border-radius: 3px; background: var(--vscode-textCodeBlock-background); }
@@ -306,22 +321,43 @@ textarea.gw-input { resize: vertical; }
 .gw-code-block table { border-collapse: collapse; width: 100%; }
 .gw-code-line-number { padding: 0 8px; color: var(--vscode-editorLineNumber-foreground); text-align: right; user-select: none; vertical-align: top; width: 1%; white-space: nowrap; }
 .gw-code-line { padding: 0 8px; white-space: pre; }
-.gw-code-line-highlight { background: var(--gw-line-highlight); }
+.gw-code-line-highlight { background: var(--vscode-editor-rangeHighlightBackground, rgba(255, 255, 0, 0.12)); box-shadow: inset 2px 0 0 var(--gw-accent); }
 .gw-code-line-highlight .gw-code-line-number { color: var(--vscode-editorLineNumber-activeForeground); }
 .gw-code-line-clickable .gw-code-line-number { cursor: pointer; }
 .gw-code-ref { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
 .gw-code-ref-quote { flex-basis: 100%; }
 
 /* hljs themed from the editor's own palette */
-.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type { color: var(--vscode-debugTokenExpression-name); }
-.hljs-string, .hljs-attr, .hljs-template-tag, .hljs-regexp { color: var(--vscode-debugTokenExpression-string); }
-.hljs-number, .hljs-literal, .hljs-symbol { color: var(--vscode-debugTokenExpression-number); }
-.hljs-comment, .hljs-quote, .hljs-meta { color: var(--gw-muted); font-style: italic; }
-.hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--vscode-symbolIcon-functionForeground); }
-.hljs-variable, .hljs-params, .hljs-property { color: var(--vscode-debugTokenExpression-value); }
-.hljs-tag, .hljs-name, .hljs-selector-class, .hljs-selector-id { color: var(--vscode-charts-blue); }
-.hljs-addition { color: var(--gw-success); }
-.hljs-deletion { color: var(--gw-danger); }
+/* Dark+ and Light+ fallbacks keep tokens legible in themes that omit the debugToken and symbolIcon colours. */
+:root {
+  --gw-syntax-keyword: #569cd6;
+  --gw-syntax-type: #4ec9b0;
+  --gw-syntax-string: #ce9178;
+  --gw-syntax-number: #b5cea8;
+  --gw-syntax-function: #dcdcaa;
+  --gw-syntax-variable: #9cdcfe;
+}
+
+body.vscode-light,
+body.vscode-high-contrast-light {
+  --gw-syntax-keyword: #0000ff;
+  --gw-syntax-type: #267f99;
+  --gw-syntax-string: #a31515;
+  --gw-syntax-number: #098658;
+  --gw-syntax-function: #795e26;
+  --gw-syntax-variable: #001080;
+}
+
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in { color: var(--vscode-debugTokenExpression-name, var(--gw-syntax-keyword)); }
+.hljs-type { color: var(--vscode-symbolIcon-classForeground, var(--gw-syntax-type)); }
+.hljs-string, .hljs-attr, .hljs-template-tag, .hljs-regexp { color: var(--vscode-debugTokenExpression-string, var(--gw-syntax-string)); }
+.hljs-number, .hljs-literal, .hljs-symbol { color: var(--vscode-debugTokenExpression-number, var(--gw-syntax-number)); }
+.hljs-comment, .hljs-quote, .hljs-meta { color: var(--gw-muted, #6a9955); font-style: italic; }
+.hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--vscode-symbolIcon-functionForeground, var(--gw-syntax-function)); }
+.hljs-variable, .hljs-params, .hljs-property { color: var(--vscode-debugTokenExpression-value, var(--gw-syntax-variable)); }
+.hljs-tag, .hljs-name, .hljs-selector-class, .hljs-selector-id { color: var(--vscode-charts-blue, #569cd6); }
+.hljs-addition { color: var(--gw-success, #81b88b); }
+.hljs-deletion { color: var(--gw-danger, #f14c4c); }
 .hljs-emphasis { font-style: italic; }
 .hljs-strong { font-weight: 600; }
 
@@ -330,24 +366,25 @@ textarea.gw-input { resize: vertical; }
 .gw-mermaid-toolbar { display: flex; align-items: center; gap: 2px; margin-bottom: 4px; color: var(--gw-muted); }
 .gw-mermaid-title { flex: 1; font-weight: 600; color: var(--gw-fg); }
 .gw-mermaid-zoom-level { min-width: 40px; text-align: center; font-size: 0.9em; }
-.gw-mermaid-viewport { overflow: auto; border: 1px solid var(--gw-border); border-radius: 3px; padding: 8px; cursor: grab; }
+.gw-mermaid-viewport { display: flex; overflow: auto; border: 1px solid var(--gw-border); border-radius: 3px; padding: 8px; cursor: grab; }
 .gw-mermaid-viewport.gw-dragging { cursor: grabbing; user-select: none; }
-.gw-mermaid-content svg { max-width: none; height: auto; }
+/* Auto margins centre the diagram while it fits and collapse to zero once it overflows, so scrolling still reaches every edge. */
+.gw-mermaid-content { flex: none; margin: auto; }
+.gw-mermaid-content svg { display: block; max-width: none; height: auto; }
 .gw-mermaid-content g.node { cursor: pointer; }
+/* Mermaid sizes subgraph titles from an inline nowrap style, so wrapping a long title needs !important.
+   It also applies in Mermaid's off-screen render container, so the layout is measured with the wrapped title. */
+.cluster-label foreignObject > div { display: block !important; max-width: 180px !important; white-space: normal !important; text-align: center; }
 
-.gw-mermaid-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  padding: 12px 16px;
-  background: var(--gw-bg);
-}
+.gw-dialog-full > .gw-dialog-body { flex: 1; min-height: 0; }
+.gw-mermaid-fill { flex: 1; display: flex; flex-direction: column; min-height: 0; margin: 0; }
+.gw-mermaid-fill .gw-mermaid-viewport { flex: 1; min-height: 0; }
 
-.gw-mermaid-overlay-header { display: flex; justify-content: flex-end; }
-.gw-mermaid-overlay .gw-mermaid { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.gw-mermaid-overlay .gw-mermaid-viewport { flex: 1; }
+.gw-mermaid-error { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--gw-border); border-left: 3px solid var(--gw-warning); border-radius: 3px; }
+.gw-mermaid-error-heading { display: flex; align-items: center; gap: 6px; color: var(--gw-fg); }
+.gw-mermaid-error-heading .codicon { color: var(--gw-warning); }
+.gw-mermaid-error-summary { color: var(--gw-muted); overflow-wrap: anywhere; }
+.gw-mermaid-error-details { margin: 4px 0; font-family: var(--gw-mono); font-size: 0.9em; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Popover, dialog, toast */
 .gw-popover {
@@ -392,6 +429,7 @@ textarea.gw-input { resize: vertical; }
 .gw-dialog-header h2 { margin: 0; font-size: 1.05em; }
 .gw-dialog-body { padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
 .gw-dialog-message { margin: 0; white-space: pre-wrap; }
+.gw-dialog-field-label { margin-bottom: -4px; font-weight: 600; }
 .gw-dialog-footer { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--gw-border); }
 
 .gw-toasts { position: fixed; right: 12px; bottom: 12px; z-index: 90; display: flex; flex-direction: column; gap: 6px; max-width: min(420px, calc(100vw - 24px)); }
@@ -401,15 +439,18 @@ textarea.gw-input { resize: vertical; }
   align-items: flex-start;
   gap: 6px;
   padding: 8px 10px;
+  border: 1px solid var(--vscode-notifications-border, var(--vscode-editorWidget-border, var(--vscode-contrastBorder, transparent)));
   border-left: 3px solid var(--gw-info);
-  background: var(--vscode-notifications-background);
-  color: var(--vscode-notifications-foreground);
-  box-shadow: 0 2px 8px var(--gw-shadow);
+  background: var(--vscode-notifications-background, var(--vscode-editorWidget-background, var(--vscode-editor-background, Canvas)));
+  color: var(--vscode-notifications-foreground, var(--vscode-editorWidget-foreground, var(--vscode-foreground, CanvasText)));
+  box-shadow: 0 2px 8px var(--gw-shadow, rgb(0 0 0 / 36%));
 }
 
 .gw-toast-success { border-left-color: var(--gw-success); }
 .gw-toast-error { border-left-color: var(--gw-danger); }
 .gw-toast-message { flex: 1; white-space: pre-wrap; }
+.gw-toast-action { padding: 0 4px; border: none; background: none; color: var(--gw-link); font: inherit; font-weight: 600; cursor: pointer; }
+.gw-toast-action:hover { text-decoration: underline; }
 
 /* Threads and comments */
 .gw-thread { padding: 6px 8px; margin: 4px 0; border-left: 2px solid var(--gw-accent); background: var(--gw-card); }
@@ -417,6 +458,8 @@ textarea.gw-input { resize: vertical; }
 .gw-thread-pending { opacity: 0.6; border-left-style: dashed; }
 .gw-thread-header { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
 .gw-thread-header:empty { display: none; }
+.gw-thread-header .gw-code-ref { display: contents; }
+.gw-thread-header .gw-code-ref-quote { order: 99; flex-basis: 100%; justify-self: stretch; }
 .gw-thread-message + .gw-thread-message { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--gw-border); }
 .gw-thread-meta { display: flex; gap: 8px; align-items: baseline; font-size: 0.9em; color: var(--gw-muted); }
 .gw-thread-author { color: var(--gw-fg); }
@@ -440,13 +483,21 @@ textarea.gw-input { resize: vertical; }
 .gw-comment-icon:hover,
 .gw-comment-icon-active { background: var(--vscode-toolbar-hoverBackground); color: var(--gw-fg); }
 .gw-comment-icon-open { color: var(--gw-accent); }
+
+/* An icon with comments stays visible. An empty one rests faint, so every commentable row shows it takes comments
+   without crowding dense lists, and comes up in full while its row is hovered or holds keyboard focus. Touch and other
+   coarse pointers cannot hover, so there it is always shown in full. */
+:where(.gw-comment-icon:not(.gw-comment-icon-open, .gw-comment-icon-active)) { opacity: 0.4; transition: opacity 0.1s; }
+.gw-comment-icon:focus-visible,
+:where(.gw-card-header, .gw-changes-row, .gw-planning-task-header, .gw-commentable):hover .gw-comment-icon,
+:where(.gw-card-header, .gw-changes-row, .gw-planning-task-header, .gw-commentable):focus-within .gw-comment-icon { opacity: 1; }
+@media (hover: none), (pointer: coarse) {
+  :where(.gw-comment-icon:not(.gw-comment-icon-open, .gw-comment-icon-active)) { opacity: 1; }
+}
 .gw-comment-count { font-size: 0.8em; font-weight: 600; }
 
 .gw-commentable { position: relative; }
-.gw-commentable-affordance { position: absolute; top: 2px; right: 2px; opacity: 0; transition: opacity 0.1s; }
-.gw-commentable:hover > .gw-commentable-affordance,
-.gw-commentable:focus-within > .gw-commentable-affordance,
-.gw-commentable-pinned > .gw-commentable-affordance { opacity: 1; }
+.gw-commentable-affordance { position: absolute; top: 2px; right: 2px; }
 .gw-commentable-content { padding-right: 28px; }
 .gw-commentable-thread { margin-top: 4px; padding: 6px 8px; border: 1px solid var(--gw-border); background: var(--gw-overlay); }
 

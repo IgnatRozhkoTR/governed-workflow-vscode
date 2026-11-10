@@ -5,16 +5,15 @@ import { runWithErrorMessage } from '../diff/diffView';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
 import { CodeThreadSet } from './codeThreadSet';
-import { codeThreads, newFileComment, newLineComment, provisionalRoot, type CodeThread } from './commentMapping';
+import { codeThreads, lineSpanOf, newFileComment, newLineComment, provisionalRoot, type CodeThread } from './commentMapping';
 import { commentPathOf, requireCommentPath } from './commentPaths';
 import { toLineSpan } from './threadPresentation';
 import { WorkspaceComments } from './workspaceComments';
 
-export { RESOLVED_THREAD_CONTEXT, UNRESOLVED_THREAD_CONTEXT } from './threadPresentation';
-
 export const REVIEW_CONTROLLER_ID = 'governedWorkflow.review';
 export const CREATE_COMMENT_COMMAND = 'governedWorkflow.comment.create';
 export const REPLY_COMMENT_COMMAND = 'governedWorkflow.comment.reply';
+export const REVEAL_COMMENT_THREAD_COMMAND = 'governedWorkflow.comment.revealThread';
 export const RESOLVE_COMMENT_COMMAND = 'governedWorkflow.comment.resolve';
 export const UNRESOLVE_COMMENT_COMMAND = 'governedWorkflow.comment.unresolve';
 const REVIEW_CONTROLLER_LABEL = 'Governed Workflow';
@@ -55,7 +54,7 @@ export class ReviewCommentController implements vscode.Disposable {
     return this.threads.hasThread(rootId);
   }
 
-  revealThread(rootId: number): Promise<void> {
+  revealThread(rootId: number): Promise<boolean> {
     return this.threads.reveal(rootId);
   }
 
@@ -72,7 +71,7 @@ export class ReviewCommentController implements vscode.Disposable {
       root: provisionalRoot(id, comment, new Date().toISOString()),
       replies: [],
       filePath: relPath,
-      lines: reply.thread.range === undefined ? undefined : toLineSpan(reply.thread.range),
+      lines: lineSpanOf({ line_start: comment.line_start ?? null, line_end: comment.line_end ?? null }),
     };
     this.threads.adopt(reply.thread, code, this.threads.canonicalUri(snapshot, relPath));
   }
@@ -124,6 +123,7 @@ export function registerReviewComments(context: vscode.ExtensionContext, deps: R
     vscode.commands.registerCommand(CREATE_COMMENT_COMMAND, (reply: vscode.CommentReply) =>
       runWithErrorMessage(() => controller.createComment(reply)),
     ),
+    vscode.commands.registerCommand(REVEAL_COMMENT_THREAD_COMMAND, (rootId: number) => controller.revealThread(rootId)),
     vscode.commands.registerCommand(REPLY_COMMENT_COMMAND, (reply: vscode.CommentReply) =>
       runWithErrorMessage(() => controller.replyToThread(reply)),
     ),
@@ -141,8 +141,10 @@ async function toNewComment(thread: vscode.CommentThread, relPath: string, text:
   if (thread.range === undefined) {
     return newFileComment(relPath, text);
   }
+  const { start, end } = thread.range;
   const document = await vscode.workspace.openTextDocument(thread.uri);
-  return newLineComment(relPath, toLineSpan(thread.range), document.lineAt(thread.range.start.line).text, text);
+  const lines = toLineSpan(thread.range, document.lineAt(end.line).text.length);
+  return newLineComment(relPath, lines, document.lineAt(start.line).text, text);
 }
 
 function requireText(reply: vscode.CommentReply): string | undefined {

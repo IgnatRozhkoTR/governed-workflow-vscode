@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { Proposal } from '../../../webview-ui/src/api/reflection';
 import type { AssignedProfile, VerificationProfile } from '../../../webview-ui/src/api/verification';
 import { availableProfiles } from '../../../webview-ui/src/tabs/phase/verificationModel';
-import { buildResultJson, countPending, parseJsonText, visibleProposals } from '../../../webview-ui/src/tabs/reflection/proposalsModel';
-import { countOpenRoots, hasResolutionBadge, prettifyAuthor, visibleRoots } from '../../../webview-ui/src/tabs/review/reviewModel';
+import { buildResultJson, countHiddenResolved, countPending, parseJsonText, visibleProposals } from '../../../webview-ui/src/tabs/reflection/proposalsModel';
+import { hasResolutionBadge, visibleRoots } from '../../../webview-ui/src/tabs/review/reviewModel';
 
 function comment(id: number, overrides: Partial<ReviewComment>): ReviewComment {
   return { id, parent_id: null, resolved: false, resolution: null, ...overrides } as ReviewComment;
@@ -25,19 +25,10 @@ describe('reviewModel', () => {
     expect(visibleRoots(comments, true).map((root) => root.id)).toEqual([1, 2]);
   });
 
-  it('countOpenRoots_shouldCountUnresolvedRootsOnly_whenRepliesPresent', () => {
-    expect(countOpenRoots(comments)).toBe(1);
-  });
-
   it('hasResolutionBadge_shouldIgnoreOpenAndEmptyResolutions', () => {
     expect(hasResolutionBadge(comment(1, { resolution: 'open' }))).toBe(false);
     expect(hasResolutionBadge(comment(1, { resolution: null }))).toBe(false);
     expect(hasResolutionBadge(comment(1, { resolution: 'fixed' }))).toBe(true);
-  });
-
-  it('prettifyAuthor_shouldCapitaliseFirstWordOnly_whenAuthorIsHyphenated', () => {
-    expect(prettifyAuthor('file-reviewer')).toBe('File reviewer');
-    expect(prettifyAuthor('user')).toBe('User');
   });
 });
 
@@ -46,6 +37,12 @@ describe('proposalsModel', () => {
 
   it('visibleProposals_shouldKeepOnlyPending_whenShowResolvedOff', () => {
     expect(visibleProposals(proposals, false).map((item) => item.id)).toEqual([1]);
+  });
+
+  it('countHiddenResolved_shouldCountResolved_whenShowResolvedOff', () => {
+    expect(countHiddenResolved(proposals, false)).toBe(2);
+    expect(countHiddenResolved(proposals, true)).toBe(0);
+    expect(countHiddenResolved([proposal(4, 'proposed')], false)).toBe(0);
   });
 
   it('visibleProposals_shouldKeepAll_whenShowResolvedOn', () => {

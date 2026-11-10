@@ -6,8 +6,9 @@ import { ActiveWorkspace } from '../../src/state/activeWorkspace';
 import { Uri } from 'vscode';
 
 const FIRST_STATE_TIMEOUT_MS = 8000;
+const mementosByBrowser = new Map();
 
-export function startHarnessSession({ repoRoot, serverUrl, token, project, branch, onMessage }) {
+export function startHarnessSession({ repoRoot, serverUrl, token, project, branch, browserId, onMessage }) {
   const extensionUri = Uri.file(repoRoot);
   const settings = new Settings();
   const client = new ApiClient(() => serverUrl, async () => token);
@@ -19,7 +20,8 @@ export function startHarnessSession({ repoRoot, serverUrl, token, project, branc
     panel = createFakePanel(extensionUri, onMessage, handlers);
     return panel;
   };
-  const host = registerControlPanel({ extensionUri, subscriptions: [] }, { client, active, locator });
+  const globalState = browserMemento(browserId);
+  const host = registerControlPanel({ extensionUri, subscriptions: [], globalState }, { client, active, locator });
   const firstState = waitForFirstState(active);
   active.select({ projectId: project, branch });
   host.createOrShow();
@@ -31,6 +33,26 @@ export function startHarnessSession({ repoRoot, serverUrl, token, project, branc
       panel.fireDispose();
       active.dispose();
       settings.dispose();
+    },
+  };
+}
+
+// One memento per browser (cookie), so the remembered tab survives page reloads like VS Code globalState survives
+// panel reopening, while parallel QA browser contexts never see each other's remembered tabs.
+function browserMemento(browserId) {
+  if (!mementosByBrowser.has(browserId)) {
+    mementosByBrowser.set(browserId, createMemoryMemento());
+  }
+  return mementosByBrowser.get(browserId);
+}
+
+function createMemoryMemento() {
+  const values = new Map();
+  return {
+    keys: () => [...values.keys()],
+    get: (key, defaultValue) => (values.has(key) ? values.get(key) : defaultValue),
+    update: async (key, value) => {
+      values.set(key, value);
     },
   };
 }
@@ -65,8 +87,12 @@ function createFakePanel(extensionUri, onMessage, handlers) {
     webview,
     title: '',
     iconPath: undefined,
+    // A real panel the user is looking at is visible and active, which selects the poller's fast interval.
+    visible: true,
+    active: true,
     reveal() {},
     dispose() {},
+    onDidChangeViewState: () => ({ dispose() {} }),
     onDidDispose: (handler) => {
       disposeHandlers.push(handler);
       return { dispose() {} };

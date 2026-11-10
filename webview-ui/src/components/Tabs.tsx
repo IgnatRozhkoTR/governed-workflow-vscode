@@ -1,9 +1,11 @@
 import type { JSX } from 'preact';
-import { classNames, toneClass, type Tone } from './types';
+import { Icon } from './Icon';
+import { classNames, toneClass, type Codicon, type Tone } from './types';
 
 export interface TabItem {
   readonly id: string;
   readonly label: string;
+  readonly icon?: Codicon;
   readonly badge?: number | string;
   readonly tone?: Tone;
   readonly disabled?: boolean;
@@ -27,9 +29,11 @@ export function Tabs({ items, activeId, onChange, variant = 'top' }: TabsProps):
           class={classNames('gw-tab', item.id === activeId && 'gw-tab-active')}
           aria-selected={item.id === activeId}
           disabled={item.disabled}
+          title={item.icon === undefined ? undefined : item.label}
+          aria-label={item.icon === undefined ? undefined : item.label}
           onClick={() => onChange(item.id)}
         >
-          {item.label}
+          {item.icon === undefined ? item.label : <Icon name={item.icon} />}
           {item.badge !== undefined && <span class={classNames('gw-tab-badge', toneClass(item.tone))}>{item.badge}</span>}
         </button>
       ))}

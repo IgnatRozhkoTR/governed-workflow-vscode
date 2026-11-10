@@ -1,7 +1,6 @@
 import type { BaseSync, ConvertSelection, ProjectRepo, RepoCandidate } from '../../../../api/git';
 
 const DEFAULT_BASE_BRANCH = 'develop';
-const MAX_URL_LENGTH = 60;
 const TRIVIAL_SYNC_REASONS: readonly string[] = ['no-local-branch', 'not-remote-based'];
 
 export type ConvertMode = 'convert' | 'edit';
@@ -40,11 +39,6 @@ export function buildConvertRows(candidates: readonly RepoCandidate[], registry:
 
 export function selectionFrom(rows: readonly ConvertRow[]): readonly ConvertSelection[] {
   return rows.filter((row) => row.checked).map((row) => ({ rel_path: row.relPath, base_branch: row.baseBranch.trim() || DEFAULT_BASE_BRANCH }));
-}
-
-export function shortenUrl(url: string): string {
-  const stripped = url.replace(/^https?:\/\//, '');
-  return stripped.length > MAX_URL_LENGTH ? `${stripped.slice(0, MAX_URL_LENGTH - 3)}…` : stripped;
 }
 
 export function baseSyncNotice(baseSync: BaseSync | null | undefined, fallbackBranch: string | null | undefined): BaseSyncNotice | undefined {

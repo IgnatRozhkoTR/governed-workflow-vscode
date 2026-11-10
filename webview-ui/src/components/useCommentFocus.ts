@@ -23,6 +23,7 @@ export function useCommentFocus(scope: string, target: string): CommentFocus {
   const nav = useStore((s) => s.nav);
   useEffect(() => {
     listeners.add(setCurrentKey);
+    setCurrentKey(openKey);
     return () => {
       listeners.delete(setCurrentKey);
     };

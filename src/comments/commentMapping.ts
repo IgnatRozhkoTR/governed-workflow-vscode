@@ -4,6 +4,7 @@ import { lineHash } from './lineHash';
 // The web stores every code comment, on a diff line, a file or a directory, under the review scope with the path as target.
 export const CODE_COMMENT_SCOPE = 'review';
 const USER_AUTHOR = 'user';
+const CURRENT_USER_LABEL = 'You';
 const OPEN_RESOLUTION = 'open';
 
 export type ThreadMessage = Pick<Reply, 'id' | 'text' | 'author' | 'created_at'>;
@@ -26,6 +27,12 @@ export interface Placement {
 }
 
 export type CommentsByTarget = Readonly<Record<string, readonly ReviewComment[]>>;
+
+// Mirrors the server's approve guard (ReviewGuard): a review root blocks approval while its resolution is 'open',
+// whatever its resolved flag says, so no client view reports fewer blockers than the gate does.
+export function isApprovalBlocker(comment: Pick<ReviewComment, 'parent_id' | 'resolution'>): boolean {
+  return comment.parent_id === null && comment.resolution === OPEN_RESOLUTION;
+}
 
 export function rootComments(commentsByTarget: CommentsByTarget): ReviewComment[] {
   return Object.values(commentsByTarget)
@@ -126,6 +133,9 @@ export function threadSignature(thread: CodeThread): string {
 }
 
 export function authorLabel(author: string): string {
+  if (author === USER_AUTHOR) {
+    return CURRENT_USER_LABEL;
+  }
   const words = author.split(/[-_]/).filter((word) => word.length > 0);
   if (words.length === 0) {
     return author;

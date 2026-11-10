@@ -1,5 +1,5 @@
 import type { DiffMode, WorkspaceRef, WorkspaceState } from '../api/types';
-import type { NavTarget, Topic } from './navigation';
+import type { NavTarget, TabId, Topic } from './navigation';
 
 export type { DiffMode };
 
@@ -55,6 +55,7 @@ export interface RpcMethodMap {
   'i18n.load':            { params: { locale: Locale };         result: Record<string, string> };
   'workspace.snapshot':   { params: Record<string, never>;      result: WorkspaceSnapshot };
   'state.refresh':        { params: Record<string, never>;      result: void };
+  'panel.rememberTab':    { params: { tab: TabId };             result: void };
   'native.openFile':      { params: OpenFileArgs;               result: void };
   'native.openDiff':      { params: OpenDiffArgs;               result: void };
   'native.openAllChanges':{ params: OpenAllChangesArgs;         result: void };
@@ -62,6 +63,7 @@ export interface RpcMethodMap {
   'native.startClaude':   { params: StartClaudeArgs;            result: void };
   'native.openWorktree':  { params: Record<string, never>;      result: void };
   'native.switchWorkspace':{ params: Record<string, never>;     result: void };
+  'native.revealCommentThread': { params: { commentId: number }; result: void };
   'native.copyText':      { params: { text: string };           result: void };
   'native.openExternal':  { params: { url: string };            result: void };
   'native.setToken':      { params: Record<string, never>;      result: void };

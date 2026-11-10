@@ -1,6 +1,6 @@
 import type { AvailablePhase, FileSnippet, GateResult, NewComment, PlanStatus, ReviewComment, SetPhaseResult } from '@api-types';
 import type { Locale } from '@shared/protocol';
-import { apiGet, apiPost, apiPut, ws } from './request';
+import { apiDelete, apiGet, apiPost, apiPut, ws } from './request';
 
 export interface CreatedId {
   readonly id: number;
@@ -13,7 +13,7 @@ export interface CommentListQuery {
 
 export interface NewDiscussion {
   readonly text: string;
-  readonly type?: 'general' | 'research' | 'scope';
+  readonly type?: 'general' | 'research' | 'impact' | 'scope';
   readonly scope?: 'research' | 'impact';
   readonly target?: string;
   readonly parent_id?: number;
@@ -74,6 +74,10 @@ export function createDiscussion(d: NewDiscussion): Promise<CreatedId> {
 
 export function updateDiscussion(id: number, patch: DiscussionPatch): Promise<unknown> {
   return apiPut(ws(`context/discussions/${id}`), patch);
+}
+
+export function deleteDiscussion(id: number): Promise<unknown> {
+  return apiDelete(ws(`context/discussions/${id}`));
 }
 
 export function replyDiscussion(id: number, text: string): Promise<unknown> {

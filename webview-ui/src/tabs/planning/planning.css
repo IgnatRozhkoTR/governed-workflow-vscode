@@ -1,14 +1,14 @@
 .gw-planning { display: flex; flex-direction: column; }
 
-.gw-planning-topbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
-}
-
 .gw-planning-hint { margin: 4px 0 8px; font-size: 0.92em; }
 .gw-planning-spacer { flex: 1; }
-.gw-planning-description { margin-bottom: 14px; }
+.gw-planning-description {
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--gw-accent);
+  border-radius: 0 4px 4px 0;
+  background: var(--gw-hover);
+}
 .gw-planning-diagram + .gw-planning-diagram { margin-top: 16px; }
 
 .gw-planning-glyph { margin-right: 6px; }
@@ -35,7 +35,7 @@
 
 .gw-planning-scope-item {
   padding: 3px 0;
-  border-bottom: 1px solid var(--gw-border);
+  border-bottom: 1px solid var(--gw-separator);
 }
 
 .gw-planning-scope-item:last-child { border-bottom: none; }
@@ -80,13 +80,12 @@
 .gw-planning-task:hover { background: var(--vscode-list-hoverBackground); }
 .gw-planning-task-highlight { box-shadow: 0 0 0 2px var(--gw-accent); }
 
-.gw-planning-task-header { display: flex; align-items: center; gap: 6px; }
+.gw-planning-task-header { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.gw-planning-task-meta { display: inline-flex; flex: none; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 
 .gw-planning-task-toggle {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 8px;
+  display: block;
+  flex: 1 1 12em;
   min-width: 0;
   padding: 0;
   border: none;
@@ -97,13 +96,29 @@
   cursor: pointer;
 }
 
+.gw-planning-task-toggle .gw-status-dot { margin-right: 8px; vertical-align: 0.05em; }
 .gw-planning-task-toggle:disabled { cursor: default; }
-.gw-planning-task-title { overflow-wrap: anywhere; }
+/* Words break only when a single word is wider than the whole row (long identifiers); otherwise lines break between words. */
+.gw-planning-task-title { overflow-wrap: break-word; min-width: 0; }
+
+.gw-planning-task-agent {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--gw-separator);
+  border-radius: 8px;
+  color: var(--gw-muted);
+  font-size: 0.82em;
+  line-height: 1.5;
+}
+
+
+.gw-planning-tasks { max-width: 1000px; }
 
 .gw-planning-task-detail {
   margin: 6px 0 4px 16px;
   padding-left: 10px;
-  border-left: 2px solid var(--gw-border);
+  border-left: 2px solid var(--gw-separator);
 }
 
 .gw-planning-task-description { margin: 0 0 6px; white-space: pre-wrap; color: var(--gw-muted); }
@@ -128,3 +143,40 @@
 .gw-planning-form { display: flex; flex-direction: column; gap: 12px; }
 .gw-planning-field { display: flex; flex-direction: column; gap: 4px; }
 .gw-planning-field > span { color: var(--gw-muted); font-size: 0.92em; }
+
+/* Task progress: the web pulses in-progress tasks and reads done/total per sub-phase; the bar and labels add a legend. */
+.gw-planning-progress { display: inline-flex; align-items: center; gap: 6px; }
+
+.gw-planning-progress-track {
+  display: inline-block;
+  width: 60px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--gw-border);
+}
+
+body.vscode-high-contrast .gw-planning-progress-track,
+body.vscode-high-contrast-light .gw-planning-progress-track {
+  height: 6px;
+  border: 1px solid var(--gw-border);
+  background: transparent;
+}
+
+.gw-planning-progress-fill { display: block; height: 100%; background: var(--gw-success); }
+
+.gw-planning-task-in_progress .gw-status-dot {
+  background: var(--gw-warning);
+  animation: gw-planning-pulse 2s ease-in-out infinite;
+}
+
+.gw-planning-task-done .gw-planning-task-title { color: var(--gw-muted); }
+
+@keyframes gw-planning-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gw-planning-task-in_progress .gw-status-dot { animation: none; }
+}

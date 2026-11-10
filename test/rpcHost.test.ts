@@ -17,7 +17,7 @@ function handlers(overrides: Partial<RpcHandlers>): RpcHandlers {
     throw new Error('unexpected call');
   };
   const methods: RpcMethod[] = [
-    'api.request', 'i18n.load', 'workspace.snapshot', 'state.refresh', 'native.openFile', 'native.openDiff',
+    'api.request', 'i18n.load', 'workspace.snapshot', 'state.refresh', 'panel.rememberTab', 'native.openFile', 'native.openDiff',
     'native.openAllChanges', 'native.resumeClaude', 'native.startClaude', 'native.openWorktree',
     'native.switchWorkspace', 'native.copyText', 'native.openExternal', 'native.setToken', 'native.saveFile',
   ];

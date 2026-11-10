@@ -9,12 +9,13 @@ import {
   setWorkflowMode,
   type AdvanceModes,
   type ProjectSettings,
+  type ProjectSettingsPatch,
 } from '../../../api/settings';
 import { Button, RadioCards, ResourceView, Select, Toggle, Toolbar, useDialogs, useToast } from '../../../components';
 import { useT } from '../../../i18n/i18n';
 import { useMutation, useResource, useWorkspaceState } from '../../../store/hooks';
 import type { SettingsSectionModule } from '../../types';
-import { SectionShell, SettingRow, SubSection } from './parts';
+import { SectionShell, SettingRow, SubSection, useUndoableSave } from './parts';
 import {
   ADVANCE_BOUNDARIES,
   ADVANCE_MODE_OPTIONS,
@@ -32,7 +33,7 @@ function WorkflowModeCard(): JSX.Element {
   const toast = useToast();
   const state = useWorkspaceState();
   const mode = useMutation(setWorkflowMode, { refreshState: true });
-  const yolo = useMutation(setYolo, { refreshState: true, successToast: t('settings.saved') });
+  const yolo = useUndoableSave(setYolo, { refreshState: true });
   const change = async (next: string): Promise<void> => {
     const isFast = next === 'fast';
     const isConfirmed = await dialogs.confirm({
@@ -54,7 +55,7 @@ function WorkflowModeCard(): JSX.Element {
         ]}
       />
       <SettingRow label={t('config.yoloMode')} description={t('settings.section.workflow.yoloDesc')}>
-        <Toggle checked={state.yolo_mode} onChange={async (enabled) => { await yolo.run(enabled); }} />
+        <Toggle checked={state.yolo_mode} ariaLabel={t('config.yoloMode')} onChange={async (enabled) => { await yolo.run(enabled, state.yolo_mode); }} />
       </SettingRow>
     </>
   );
@@ -62,19 +63,19 @@ function WorkflowModeCard(): JSX.Element {
 
 function ProjectDefaults({ settings, reload }: { readonly settings: ProjectSettings; readonly reload: () => void }): JSX.Element {
   const t = useT();
-  const save = useMutation(putProjectSettings, { invalidates: SETTINGS_TOPICS, successToast: t('settings.saved') });
-  const update = async (patch: Parameters<typeof putProjectSettings>[0]): Promise<void> => {
-    if ((await save.run(patch)) === undefined) {
+  const save = useUndoableSave(putProjectSettings, { invalidates: SETTINGS_TOPICS });
+  const update = async (patch: ProjectSettingsPatch, previous: ProjectSettingsPatch): Promise<void> => {
+    if (!(await save.run(patch, previous))) {
       reload();
     }
   };
   return (
     <>
       <SettingRow label={t('config.fastModeDefault')} description={t('config.fastModeDefaultDesc')}>
-        <Toggle checked={settings.fast_mode_default} onChange={(value) => update({ fast_mode_default: value })} />
+        <Toggle checked={settings.fast_mode_default} ariaLabel={t('config.fastModeDefault')} onChange={(value) => update({ fast_mode_default: value }, { fast_mode_default: settings.fast_mode_default })} />
       </SettingRow>
       <SettingRow label={t('config.yoloModeDefault')} description={t('config.yoloModeDefaultDesc')}>
-        <Toggle checked={settings.yolo_mode_default} onChange={(value) => update({ yolo_mode_default: value })} />
+        <Toggle checked={settings.yolo_mode_default} ariaLabel={t('config.yoloModeDefault')} onChange={(value) => update({ yolo_mode_default: value }, { yolo_mode_default: settings.yolo_mode_default })} />
       </SettingRow>
     </>
   );
@@ -115,6 +116,7 @@ function AdvanceModeRows({ saved }: { readonly saved: AdvanceModes }): JSX.Eleme
               <div class="gw-set-row-control">
                 <Select
                   value={value}
+                  ariaLabel={t(boundary.labelKey)}
                   options={ADVANCE_MODE_OPTIONS.map((candidate) => ({ value: candidate.value, label: t(candidate.labelKey) }))}
                   onChange={(next) => setPending(setPendingAdvanceMode(saved, pending, boundary.key, next))}
                 />
@@ -136,15 +138,15 @@ function WorkflowSection({ active }: { readonly active: boolean }): JSX.Element 
   const advanceModes = useResource('settings', 'advance', getAdvanceModes, { active, refetchOnState: false });
   return (
     <SectionShell sectionKey="workflow" scope="workspace">
-      <SubSection title={t('cards.workflowMode')} scope="workspace">
+      <SubSection saveMode="instant">
         <WorkflowModeCard />
       </SubSection>
-      <SubSection title={t('settings.section.workflow.projectDefaultsTitle')} scope="project">
+      <SubSection title={t('settings.section.workflow.projectDefaultsTitle')} scope="project" saveMode="instant">
         <ResourceView resource={projectSettings}>
           {(data) => <ProjectDefaults settings={data} reload={projectSettings.reload} />}
         </ResourceView>
       </SubSection>
-      <SubSection title={t('cards.advanceModes')} scope="project">
+      <SubSection title={t('cards.advanceModes')} scope="project" saveMode="form">
         <ResourceView resource={advanceModes}>{(data) => <AdvanceModeRows saved={data} />}</ResourceView>
       </SubSection>
     </SectionShell>

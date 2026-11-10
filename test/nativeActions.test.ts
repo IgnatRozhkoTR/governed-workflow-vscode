@@ -104,3 +104,30 @@ describe('native.copyText', () => {
     await expect(handlers['native.copyText']({ text: '' })).rejects.toMatchObject({ code: 'native_failed' });
   });
 });
+
+describe('native.revealCommentThread', () => {
+  const execute = vi.mocked(vscode.commands.executeCommand);
+
+  beforeEach(() => execute.mockReset());
+
+  it('revealCommentThread_shouldDelegateToRevealCommand_whenThreadExists', async () => {
+    execute.mockResolvedValue(true);
+
+    await handlers['native.revealCommentThread']({ commentId: 42 });
+
+    expect(execute).toHaveBeenCalledWith('governedWorkflow.comment.revealThread', 42);
+  });
+
+  it('revealCommentThread_shouldRejectWithNativeFailed_whenThreadIsMissing', async () => {
+    execute.mockResolvedValue(false);
+
+    await expect(handlers['native.revealCommentThread']({ commentId: 42 })).rejects.toMatchObject({ code: 'native_failed' });
+  });
+
+  it('revealCommentThread_shouldRejectWithNativeFailed_whenIdIsNotInteger', async () => {
+    const args = { commentId: 'x' } as unknown as { commentId: number };
+
+    await expect(handlers['native.revealCommentThread'](args)).rejects.toMatchObject({ code: 'native_failed' });
+    expect(execute).not.toHaveBeenCalled();
+  });
+});

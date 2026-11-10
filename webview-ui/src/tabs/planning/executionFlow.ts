@@ -34,8 +34,8 @@ interface GroupMember {
   readonly index: number;
 }
 
-const SUB_LABEL_MAX = 25;
-const TASK_LABEL_MAX = 30;
+const SUB_LABEL_MAX = 60;
+const TASK_LABEL_MAX = 60;
 
 export function escapeLabel(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

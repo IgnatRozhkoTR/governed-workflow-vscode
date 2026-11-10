@@ -1,26 +1,124 @@
 .gw-reflection {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .gw-reflection-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+}
+
+.gw-proposal-item {
+  margin-bottom: calc(var(--gw-row-gap) * 2);
+}
+
+.gw-proposal-item > .gw-card {
+  margin-bottom: 0;
+}
+
+.gw-proposal-item > .gw-proposal-confirm {
+  margin-top: 8px;
+}
+
+.gw-proposal-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--gw-accent);
+  border-radius: 4px;
+  background: var(--gw-card);
+}
+
+.gw-proposal-confirm-intro {
+  margin: 0;
+  font-weight: 600;
+}
+
+.gw-proposal-confirm-preview {
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px 8px;
+  border: 1px solid var(--gw-border);
+  border-radius: 3px;
+  background: var(--gw-bg);
 }
 
 .gw-proposal {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+}
+
+.gw-proposal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gw-proposal-body-toggle {
+  align-self: flex-start;
+}
+
+.gw-proposal-body-clamped {
+  max-height: 9em;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black 60%, transparent);
 }
 
 .gw-proposal-reason {
+  min-width: 0;
   color: var(--gw-muted);
+  font-size: 0.9em;
+  font-weight: normal;
+  overflow-wrap: anywhere;
+}
+
+.gw-proposal-reason-label {
+  font-weight: 600;
+}
+
+.gw-proposal-time {
+  color: var(--gw-muted);
+  font-size: 0.9em;
+  font-weight: normal;
 }
 
 .gw-proposal-actions {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 6px;
+}
+
+.gw-reflection-proposals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gw-row-gap);
+  border-radius: 4px;
+}
+
+.gw-reflection-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-left: 3px solid var(--gw-info);
+}
+
+.gw-reflection-progress-done {
+  border-left-color: var(--gw-success);
+}
+
+/* Beside two buttons a narrow panel squeezes the title into a column of a few words, so the actions drop under it,
+   aligned with the title past the card's toggle. */
+@media (max-width: 600px) {
+  .gw-proposal-item .gw-card-header {
+    flex-wrap: wrap;
+  }
+
+  .gw-proposal-item .gw-card-actions {
+    flex-basis: 100%;
+    padding-left: 22px;
+  }
 }

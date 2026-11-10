@@ -1,8 +1,8 @@
 import type * as vscode from 'vscode';
-import { DEFAULT_NAV, isNavTarget, type NavTarget } from '../shared/navigation';
+import { isNavTarget, type NavTarget } from '../shared/navigation';
 
 export interface ControlPanelRestorer {
-  restore(panel: vscode.WebviewPanel, nav: NavTarget): void;
+  restore(panel: vscode.WebviewPanel, nav: NavTarget | undefined): void;
 }
 
 export class ControlPanelSerializer implements vscode.WebviewPanelSerializer<unknown> {
@@ -13,12 +13,12 @@ export class ControlPanelSerializer implements vscode.WebviewPanelSerializer<unk
   }
 }
 
-function savedNav(state: unknown): NavTarget {
+function savedNav(state: unknown): NavTarget | undefined {
   if (typeof state !== 'object' || state === null) {
-    return DEFAULT_NAV;
+    return undefined;
   }
   const nav = (state as Record<string, unknown>).nav;
-  return isNavTarget(nav) ? withoutOneShotIntents(nav) : DEFAULT_NAV;
+  return isNavTarget(nav) ? withoutOneShotIntents(nav) : undefined;
 }
 
 // A restored window must not reopen a dialog or comment thread the user already dealt with before the reload.

@@ -26,8 +26,13 @@ export function toEditorRange(lines: LineSpan): vscode.Range {
   return new vscode.Range(lines.start - 1, 0, lines.end - 1, 0);
 }
 
-export function toLineSpan(range: vscode.Range): LineSpan {
-  return { start: range.start.line + 1, end: range.end.line + 1 };
+// VS Code builds a gutter "+" click as an empty range on the clicked line and a gutter drag as a range
+// ending at the end of the last dragged line, so a drag ending on an empty line also ends at column 0.
+// Only a selection ending at column 0 of a non-empty following line stops before that line.
+export function toLineSpan(range: vscode.Range, endLineLength: number): LineSpan {
+  const endsAtNextLineStart = range.end.character === 0 && endLineLength > 0 && range.end.line > range.start.line;
+  const lastLine = endsAtNextLineStart ? range.end.line - 1 : range.end.line;
+  return { start: range.start.line + 1, end: lastLine + 1 };
 }
 
 function toComment(message: ThreadMessage): vscode.Comment {

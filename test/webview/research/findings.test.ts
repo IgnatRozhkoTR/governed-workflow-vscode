@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   abbreviateCommit,
   findingCommentTarget,
+  findingCountKey,
   isMarkdownPath,
   parseFindings,
   parseProof,
@@ -62,5 +63,16 @@ describe('helpers', () => {
     expect(proofBadgeSpec(1).tone).toBe('success');
     expect(proofBadgeSpec(-1).tone).toBe('danger');
     expect(proofBadgeSpec(0).tone).toBe('warning');
+  });
+});
+
+describe('findingCountKey', () => {
+  it('findingCountKey_shouldUseSingularKey_whenExactlyOneFinding', () => {
+    expect(findingCountKey(1)).toBe('vsc.research.findingOne');
+  });
+
+  it('findingCountKey_shouldUsePluralKey_whenZeroOrMany', () => {
+    expect(findingCountKey(0)).toBe('research.findingCount');
+    expect(findingCountKey(3)).toBe('research.findingCount');
   });
 });

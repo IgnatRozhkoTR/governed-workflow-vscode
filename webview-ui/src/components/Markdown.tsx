@@ -1,8 +1,9 @@
 import { render, type JSX } from 'preact';
 import { useEffect, useMemo, useRef } from 'preact/hooks';
-import { MERMAID_SLOT_CLASS, MERMAID_SOURCE_ATTRIBUTE, renderMarkdown } from '../lib/markdown';
+import { MERMAID_SLOT_CLASS, MermaidSourceError, readMermaidSource, renderMarkdown } from '../lib/markdown';
 import { rpc } from '../rpc/rpcClient';
 import { MermaidDiagram } from './MermaidDiagram';
+import { MermaidError } from './MermaidError';
 import { toasts } from './ToastHost';
 import { classNames } from './types';
 
@@ -32,8 +33,19 @@ export function Markdown({ source, mermaid = true, className, compact = false }:
 
 function mountMermaidSlots(container: HTMLElement): () => void {
   const slots = Array.from(container.querySelectorAll<HTMLElement>(`.${MERMAID_SLOT_CLASS}`));
-  slots.forEach((slot) => render(<MermaidDiagram source={slot.getAttribute(MERMAID_SOURCE_ATTRIBUTE) ?? ''} />, slot));
+  slots.forEach((slot) => render(mermaidSlotContent(slot), slot));
   return () => slots.forEach((slot) => render(null, slot));
+}
+
+function mermaidSlotContent(slot: Element): JSX.Element {
+  try {
+    return <MermaidDiagram source={readMermaidSource(slot)} />;
+  } catch (error) {
+    if (error instanceof MermaidSourceError) {
+      return <MermaidError error={error} />;
+    }
+    throw error;
+  }
 }
 
 function handleLinkClick(event: MouseEvent): void {

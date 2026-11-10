@@ -5,10 +5,20 @@ import { rpc } from '../rpc/rpcClient';
 import { useStore } from '../store/hooks';
 import { store } from '../store/store';
 
+function retryConnection(toast: ReturnType<typeof useToast>): void {
+  void store.refreshState().catch(toast.error);
+}
+
+function switchWorkspace(toast: ReturnType<typeof useToast>): void {
+  rpc.call('native.switchWorkspace', {}).catch(toast.error);
+}
+
+// Without a loaded workspace the error is the whole page (see NoWorkspace), so the banner stays out of its way.
 export function ConnectionBanner(): JSX.Element | null {
   const t = useT();
   const toast = useToast();
   const connection = useStore((s) => s.connection);
+  const hasState = useStore((s) => s.state !== null);
   if (connection.status === 'auth_required') {
     return (
       <div class="gw-connection-banner" role="alert">
@@ -17,18 +27,25 @@ export function ConnectionBanner(): JSX.Element | null {
       </div>
     );
   }
-  if (connection.status === 'error') {
-    return <ErrorBanner error={new Error(connection.message)} onRetry={() => void store.refreshState().catch(toast.error)} />;
+  if (connection.status === 'error' && hasState) {
+    return <ErrorBanner error={new Error(connection.message)} onRetry={() => retryConnection(toast)} />;
   }
   return null;
 }
 
+// A workspace that failed to load (an unknown project, say) shows the error alone, never beside a spinner, with a
+// way to try again or pick another workspace.
 export function NoWorkspace(): JSX.Element {
   const t = useT();
   const toast = useToast();
   const hasWorkspace = useStore((s) => s.workspace !== null);
-  const action = hasWorkspace
-    ? undefined
-    : <Button variant="primary" icon="arrow-swap" label={t('header.switch')} onClick={() => rpc.call('native.switchWorkspace', {}).catch(toast.error)} />;
-  return <EmptyState icon={hasWorkspace ? 'loading' : 'folder'} message={t(hasWorkspace ? 'vsc.common.loading' : 'vsc.connection.noWorkspace')} action={action} />;
+  const connection = useStore((s) => s.connection);
+  const switchButton = <Button variant="primary" icon="arrow-swap" label={t('header.switch')} onClick={() => switchWorkspace(toast)} />;
+  if (connection.status === 'error') {
+    const actions = <span class="gw-empty-state-actions">{switchButton}<Button icon="refresh" label={t('vsc.common.retry')} onClick={() => retryConnection(toast)} /></span>;
+    return <EmptyState icon="error" message={connection.message} action={actions} />;
+  }
+  return hasWorkspace
+    ? <EmptyState icon="loading" message={t('vsc.common.loading')} />
+    : <EmptyState icon="folder" message={t('vsc.connection.noWorkspace')} action={switchButton} />;
 }

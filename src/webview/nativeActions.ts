@@ -3,8 +3,10 @@ import { basename } from 'node:path';
 import * as vscode from 'vscode';
 import type { ApiClient } from '../api/client';
 import { pickAndSelectWorkspace } from '../commands/switchWorkspace';
-import { joinRepoPath, openAllChangesFor, openDiffFor, type WorkspaceSnapshot } from '../diff/diffView';
+import { openAllChangesFor, openDiffFor, type WorkspaceSnapshot } from '../diff/diffView';
+import { joinRepoPath } from '../shared/paths';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
+import { REVEAL_COMMENT_THREAD_COMMAND } from '../comments/reviewComments';
 import type { OpenFileArgs, RpcMethod, SaveFileArgs, SaveFileResult } from '../shared/protocol';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
 import { RpcHandlerError, type RpcHandler } from './rpcHost';
@@ -32,6 +34,7 @@ export function createNativeHandlers(deps: NativeActionDeps): NativeHandlers {
     'native.startClaude': (args) => runNative(() => startClaude(args.confirmed)),
     'native.openWorktree': () => runNative(() => executeCommand('governedWorkflow.openWorktree', requireSnapshot(deps).workspace)),
     'native.switchWorkspace': () => runNative(() => pickAndSelectWorkspace(deps)),
+    'native.revealCommentThread': (args) => runNative(() => revealCommentThread(args.commentId)),
     'native.copyText': (args) => runNative(() => vscode.env.clipboard.writeText(requireString(args.text, 'text'))),
     'native.openExternal': (args) => runNative(() => openExternal(requireString(args.url, 'url'))),
     'native.setToken': () => runNative(() => executeCommand('governedWorkflow.setToken')),
@@ -86,6 +89,16 @@ function startClaude(isConfirmed: boolean): Thenable<unknown> {
   return isConfirmed
     ? executeCommand('governedWorkflow.startClaude', { skipConfirm: true })
     : executeCommand('governedWorkflow.startClaude');
+}
+
+async function revealCommentThread(commentId: number): Promise<void> {
+  if (!Number.isInteger(commentId)) {
+    throw new RpcHandlerError(NATIVE_FAILED_CODE, 'The "commentId" argument must be an integer.');
+  }
+  const isRevealed = await vscode.commands.executeCommand<boolean>(REVEAL_COMMENT_THREAD_COMMAND, commentId);
+  if (!isRevealed) {
+    throw new RpcHandlerError(NATIVE_FAILED_CODE, 'This comment cannot be shown in the editor.');
+  }
 }
 
 async function openExternal(url: string): Promise<void> {

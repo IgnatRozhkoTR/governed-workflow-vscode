@@ -1,8 +1,6 @@
 import { PROTOCOL_VERSION, isLocale, type PanelBootstrap } from '@shared/protocol';
 import { render } from 'preact';
-import { loadLocaleMessages } from './i18n/i18n';
 import { rpc } from './rpc/rpcClient';
-import { toasts } from './components/ToastHost';
 import { App } from './shell/App';
 import { store } from './store/store';
 import { TAB_MODULES } from './tabs';
@@ -36,7 +34,7 @@ function start(): void {
     throw new BootstrapError('The panel root element is missing.');
   }
   render(<App modules={TAB_MODULES} />, root);
-  loadLocaleMessages(bootstrap.locale).catch(toasts.error);
+  void store.syncSnapshot();
 }
 
 try {

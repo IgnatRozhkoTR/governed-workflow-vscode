@@ -15,6 +15,10 @@ function replyInput(): HTMLTextAreaElement {
   return document.querySelector('.gw-thread-reply textarea') as HTMLTextAreaElement;
 }
 
+function openReply(): void {
+  fireEvent.click(screen.getByText('buttons.reply'));
+}
+
 function typeReply(text: string): void {
   fireEvent.input(replyInput(), { target: { value: text } });
 }
@@ -36,23 +40,25 @@ describe('ThreadView', () => {
 
     expect(screen.getByText('root text')).toBeTruthy();
     expect(screen.getByText('reply text')).toBeTruthy();
-    expect(screen.getByText('claude')).toBeTruthy();
+    expect(screen.getByText('Claude')).toBeTruthy();
+    expect(screen.getByText('You')).toBeTruthy();
   });
 
   it('reply_shouldCallOnReplyWithTrimmedText_andClearDraft', async () => {
     const onReply = vi.fn(async () => undefined);
     renderThread({ onReply });
+    openReply();
 
     typeReply('  looks good  ');
     fireEvent.click(screen.getByText('buttons.reply'));
 
     await waitFor(() => expect(onReply).toHaveBeenCalledWith('looks good'));
-    await waitFor(() => expect(replyInput().value).toBe(''));
   });
 
   it('reply_shouldSubmitOnEnter', async () => {
     const onReply = vi.fn(async () => undefined);
     renderThread({ onReply });
+    openReply();
 
     typeReply('via enter');
     fireEvent.keyDown(replyInput(), { key: 'Enter' });
@@ -63,6 +69,7 @@ describe('ThreadView', () => {
   it('reply_shouldNotSubmit_whenDraftIsBlank', () => {
     const onReply = vi.fn(async () => undefined);
     renderThread({ onReply });
+    openReply();
 
     typeReply('   ');
     fireEvent.keyDown(replyInput(), { key: 'Enter' });
@@ -74,6 +81,7 @@ describe('ThreadView', () => {
   it('reply_shouldKeepDraftAndShowErrorToast_whenOnReplyRejects', async () => {
     const failure = new Error('network down');
     renderThread({ onReply: vi.fn(async () => { throw failure; }) });
+    openReply();
 
     typeReply('keep me');
     fireEvent.keyDown(replyInput(), { key: 'Enter' });
@@ -88,6 +96,36 @@ describe('ThreadView', () => {
     expect(document.querySelector('.gw-thread-reply')).toBeNull();
   });
 
+  it('render_shouldShowReplyButtonInsteadOfBox_untilReplyIsClicked', () => {
+    renderThread({ onReply: vi.fn(async () => undefined) });
+
+    expect(document.querySelector('.gw-thread-reply')).toBeNull();
+    openReply();
+
+    expect(replyInput()).toBeTruthy();
+    expect(document.activeElement).toBe(replyInput());
+  });
+
+  it('escape_shouldCollapseReplyBox_andReturnFocusToReplyButton', () => {
+    renderThread({ onReply: vi.fn(async () => undefined) });
+    openReply();
+
+    fireEvent.keyDown(replyInput(), { key: 'Escape' });
+
+    expect(document.querySelector('.gw-thread-reply')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByText('buttons.reply').closest('button'));
+  });
+
+  it('reply_shouldCollapseReplyBox_afterSuccessfulSend', async () => {
+    renderThread({ onReply: vi.fn(async () => undefined) });
+    openReply();
+
+    typeReply('done');
+    fireEvent.keyDown(replyInput(), { key: 'Enter' });
+
+    await waitFor(() => expect(document.querySelector('.gw-thread-reply')).toBeNull());
+  });
+
   it('render_shouldHideReplyBox_whenNoReplyHandlerIsGiven', () => {
     renderThread();
 
@@ -98,7 +136,7 @@ describe('ThreadView', () => {
     const onToggleResolved = vi.fn(async () => undefined);
     renderThread({ onToggleResolved });
 
-    fireEvent.click(screen.getByText('buttons.resolve'));
+    fireEvent.click(screen.getByText('vsc.common.resolve'));
 
     await waitFor(() => expect(onToggleResolved).toHaveBeenCalledWith(true));
   });
@@ -116,7 +154,7 @@ describe('ThreadView', () => {
     const failure = new Error('forbidden');
     renderThread({ onToggleResolved: vi.fn(async () => { throw failure; }) });
 
-    fireEvent.click(screen.getByText('buttons.resolve'));
+    fireEvent.click(screen.getByText('vsc.common.resolve'));
 
     await waitFor(() => expect(errorSpy).toHaveBeenCalledWith(failure));
   });
@@ -124,14 +162,14 @@ describe('ThreadView', () => {
   it('render_shouldOmitResolveButton_whenNoToggleHandlerIsGiven', () => {
     renderThread();
 
-    expect(screen.queryByText('buttons.resolve')).toBeNull();
+    expect(screen.queryByText('vsc.common.resolve')).toBeNull();
   });
 
   it('render_shouldCollapseRepliesOfResolvedThread_andExpandOnToggle', () => {
     renderThread({ resolved: true, collapsedWhenResolved: true });
     expect(screen.queryByText('reply text')).toBeNull();
 
-    fireEvent.click(document.querySelector('.gw-thread-header button[title="root text"]') as Element);
+    fireEvent.click(document.querySelector('.gw-thread button[title="root text"]') as Element);
 
     expect(screen.getByText('reply text')).toBeTruthy();
   });

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   countOpenDiscussions,
   countPendingResearchDiscussions,
+  discussionTitle,
+  distinctDiscussionTitle,
   isDiscussionDone,
   provenDiscussionIds,
   visibleDiscussions,
@@ -36,8 +38,36 @@ describe('discussion filtering', () => {
   });
 
   it('counts open discussions and unverified research discussions', () => {
-    expect(countOpenDiscussions(ALL)).toBe(3);
+    expect(countOpenDiscussions(ALL, PROVEN)).toBe(2);
     expect(countPendingResearchDiscussions(ALL, PROVEN)).toBe(1);
+  });
+
+  it('countOpenDiscussions_shouldSkipProvenResearch_whenItsStatusIsStillOpen', () => {
+    expect(countOpenDiscussions([discussion(3, 'research', 'open')], PROVEN)).toBe(0);
+    expect(countOpenDiscussions([discussion(3, 'research', 'open')], new Set())).toBe(1);
+  });
+
+  it('discussionTitle_shouldCollapseWhitespaceAndTruncate_whenBodyIsLong', () => {
+    const long = { ...discussion(5, 'general', 'open'), text: `first\nline ${'x'.repeat(100)}` };
+    const title = discussionTitle(long);
+    expect(title.startsWith('first line x')).toBe(true);
+    expect(title).toHaveLength(80);
+    expect(title.endsWith('…')).toBe(true);
+    expect(discussionTitle({ ...long, text: '  short  ' })).toBe('short');
+  });
+
+  it('distinctDiscussionTitle_shouldBeUndefined_whenMessageIsASingleLine', () => {
+    expect(distinctDiscussionTitle({ ...discussion(6, 'general', 'open'), text: 'Should we cache prices?' })).toBeUndefined();
+    expect(distinctDiscussionTitle({ ...discussion(6, 'general', 'open'), text: `Long single line ${'x'.repeat(120)}` })).toBeUndefined();
+  });
+
+  it('distinctDiscussionTitle_shouldReturnFirstLine_whenMoreTextFollows', () => {
+    const text = '  Pricing cache\n\nShould prices be cached per cart or per session?';
+    expect(distinctDiscussionTitle({ ...discussion(7, 'general', 'open'), text })).toBe('Pricing cache');
+  });
+
+  it('distinctDiscussionTitle_shouldBeUndefined_whenOnlyBlankLinesFollow', () => {
+    expect(distinctDiscussionTitle({ ...discussion(8, 'general', 'open'), text: 'Just a question\n   \n' })).toBeUndefined();
   });
 
   it('treats research as done when proven and others when resolved', () => {

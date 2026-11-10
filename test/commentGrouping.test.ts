@@ -126,6 +126,18 @@ describe('panelNavFor', () => {
     expect(panelNavFor({ scope: 'research', target: null })?.comment).toEqual({ scope: 'research', target: '' });
   });
 
+  it('panelNavFor_shouldOpenPreplanning_whenResearchCommentTargetsAnEntryId', () => {
+    expect(panelNavFor({ scope: 'research', target: '12' })).toEqual({ tab: 'preplanning', comment: { scope: 'research', target: '12' } });
+  });
+
+  it('panelNavFor_shouldOpenResearchTab_whenResearchCommentTargetsAFinding', () => {
+    expect(panelNavFor({ scope: 'research', target: 'Finding: cache is shared' })?.tab).toBe('research');
+  });
+
+  it('panelNavFor_shouldOpenPhaseHistory_whenCommentIsAGateRejection', () => {
+    expect(panelNavFor({ scope: 'phase', target: 'reject:1.4' })).toEqual({ tab: 'phase', anchor: 'phase-history' });
+  });
+
   it('should return undefined when no panel tab shows the scope', () => {
     expect(panelNavFor({ scope: 'custom', target: 'x' })).toBeUndefined();
   });

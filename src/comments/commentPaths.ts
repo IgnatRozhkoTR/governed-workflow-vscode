@@ -1,8 +1,9 @@
 import type * as vscode from 'vscode';
 import { ApiError } from '../api/errors';
-import { joinRepoPath, type WorkspaceSnapshot } from '../diff/diffView';
+import type { WorkspaceSnapshot } from '../diff/diffView';
 import { BASE_FILE_SCHEME, REMOTE_FILE_SCHEME, parseBaseFileUri } from '../fs/uris';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
+import { joinRepoPath } from '../shared/paths';
 
 const LOCAL_FILE_SCHEME = 'file';
 

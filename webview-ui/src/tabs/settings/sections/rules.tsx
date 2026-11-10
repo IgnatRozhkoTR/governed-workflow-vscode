@@ -53,12 +53,12 @@ function RuleForm({ initial, isNew, onClose }: { readonly initial: Rule; readonl
     >
       <div class="gw-set-form">
         <Field label={t('rules.name')}>
-          <TextField value={draft.name} disabled={!isNew} placeholder={t('placeholders.ruleName')} autoFocus={isNew} onInput={(name) => setDraft({ ...draft, name })} />
+          <TextField value={draft.name} ariaLabel={t('rules.name')} disabled={!isNew} placeholder={t('placeholders.ruleName')} autoFocus={isNew} onInput={(name) => setDraft({ ...draft, name })} />
         </Field>
         <Field label={t('rules.description')}>
-          <TextField value={draft.description} autoFocus={!isNew} onInput={(description) => setDraft({ ...draft, description })} />
+          <TextField value={draft.description} ariaLabel={t('rules.description')} autoFocus={!isNew} onInput={(description) => setDraft({ ...draft, description })} />
         </Field>
-        <Field label={t('rules.paths')}>
+        <Field label={t('vsc.settings.rulePathsChips')}>
           <ChipInput
             values={draft.paths}
             minChars={1}
@@ -69,7 +69,7 @@ function RuleForm({ initial, isNew, onClose }: { readonly initial: Rule; readonl
         </Field>
         <Field label={t('rules.body')}>
           <div class="gw-set-mono">
-            <TextField multiline rows={BODY_ROWS} value={draft.body} placeholder={t('placeholders.ruleBody')} onInput={(body) => setDraft({ ...draft, body })} />
+            <TextField multiline rows={BODY_ROWS} value={draft.body} ariaLabel={t('rules.body')} placeholder={t('placeholders.ruleBody')} onInput={(body) => setDraft({ ...draft, body })} />
           </div>
         </Field>
       </div>

@@ -9,7 +9,7 @@ export function GitOverview(): JSX.Element {
   const isMulti = state.project_type === 'multi';
   const branch = state.source_branch ? `${state.branch} → ${state.source_branch}` : state.branch;
   return (
-    <Card title={t('gitCockpit.overview.title')}>
+    <Card id="git-overview" title={t('gitCockpit.overview.title')}>
       <KeyValueList
         items={[
           {

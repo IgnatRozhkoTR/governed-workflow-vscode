@@ -1,5 +1,8 @@
 import type { ReviewComment, WorkspaceState } from '@api-types';
 
+// The web stores every code and review comment under one scope, with the file or folder path as target.
+export const REVIEW_SCOPE = 'review';
+
 const NO_COMMENTS: readonly ReviewComment[] = [];
 
 export function commentKey(scope: string, target: string | null | undefined): string {
@@ -19,4 +22,8 @@ export function openCountByScope(state: WorkspaceState, scope: string): number {
   return Object.entries(state.comments)
     .filter(([key]) => key.startsWith(prefix))
     .reduce((total, [, comments]) => total + comments.filter((comment) => !comment.resolved).length, 0);
+}
+
+export function openCountAll(state: WorkspaceState): number {
+  return Object.values(state.comments).reduce((total, comments) => total + comments.filter((comment) => !comment.resolved).length, 0);
 }

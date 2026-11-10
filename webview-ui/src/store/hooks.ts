@@ -2,13 +2,16 @@ import type { ReviewComment, WorkspaceState } from '@api-types';
 import type { NavTarget, Topic } from '@shared/navigation';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { getAvailablePhases } from '../api/core';
-import { useToast } from '../components/ToastHost';
+import { useToast, type ToastApi } from '../components/ToastHost';
 import { phaseLabel, type PhaseName } from '../i18n/i18n';
+import { RpcError } from '../rpc/rpcClient';
 import { getPersisted, setPersisted } from '../rpc/vscodeApi';
 import { selectComments, selectOpenCommentCount, store, type StoreSnapshot } from './store';
 
 const UI_PERSIST_PREFIX = 'ui.';
 const NO_PHASES: readonly PhaseName[] = [];
+// A 404 or 409 means the server state moved on (deleted or changed elsewhere), so the stale view must refresh.
+const STALE_STATE_STATUSES: ReadonlySet<number> = new Set([404, 409]);
 
 export interface Resource<T> {
   data: T | undefined;
@@ -49,11 +52,17 @@ export function useStore<T>(selector: (s: StoreSnapshot) => T, isEqual: (a: T, b
   if (!isEqual(selectedRef.current, next)) {
     selectedRef.current = next;
   }
-  useEffect(() => store.subscribe(() => {
-    if (!isEqual(selectedRef.current, selectorRef.current(store.getSnapshot()))) {
-      setRenderCount((count) => count + 1);
-    }
-  }), []);
+  useEffect(() => {
+    const rerenderOnChange = (): void => {
+      if (!isEqual(selectedRef.current, selectorRef.current(store.getSnapshot()))) {
+        setRenderCount((count) => count + 1);
+      }
+    };
+    const unsubscribe = store.subscribe(rerenderOnChange);
+    // Effects run after paint, so a host reply can update the store between render and subscription; catch up once here.
+    rerenderOnChange();
+    return unsubscribe;
+  }, []);
   return selectedRef.current;
 }
 
@@ -115,22 +124,26 @@ export function useMutation<A extends unknown[], R>(fn: (...a: A) => Promise<R>,
   const [pendingCount, setPendingCount] = useState(0);
   const fnRef = useRef(fn);
   fnRef.current = fn;
+  const optsRef = useRef(opts);
+  optsRef.current = opts;
   const run = useCallback(async (...args: A): Promise<R | undefined> => {
+    const options = optsRef.current;
     setPendingCount((count) => count + 1);
     try {
       const result = await fnRef.current(...args);
-      await afterMutation(opts);
-      if (opts?.successToast !== undefined) {
-        toast.success(opts.successToast);
+      await afterMutation(options);
+      if (options?.successToast !== undefined) {
+        toast.success(options.successToast);
       }
       return result;
     } catch (error) {
       toast.error(error);
+      await refreshIfStale(error, options, toast);
       return undefined;
     } finally {
       setPendingCount((count) => count - 1);
     }
-  }, [opts?.invalidates, opts?.refreshState, opts?.successToast]);
+  }, [toast]);
   return { run, pending: pendingCount > 0 };
 }
 
@@ -140,6 +153,17 @@ async function afterMutation(opts: MutationOptions | undefined): Promise<void> {
   }
   if (opts?.refreshState === true) {
     await store.refreshState();
+  }
+}
+
+async function refreshIfStale(error: unknown, opts: MutationOptions | undefined, toast: ToastApi): Promise<void> {
+  if (!(error instanceof RpcError && STALE_STATE_STATUSES.has(error.status))) {
+    return;
+  }
+  try {
+    await afterMutation(opts);
+  } catch (refreshError) {
+    toast.error(refreshError);
   }
 }
 

@@ -1,0 +1,462 @@
+/* ═══ TAB STRIP ═══ */
+
+/* The strip's rule runs the full width; its tabs start at the content column (see --gw-column-inset). */
+.gw-tab-strip {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  padding-inline: max(0px, calc(var(--gw-column-inset) - var(--gw-column-gutter)));
+  border-bottom: 1px solid var(--gw-border);
+}
+
+.gw-tab-strip .gw-tabs.gw-tab-bar {
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  padding: 0;
+  border-bottom: none;
+}
+
+/* Tight enough that all ten tabs fit whole at 1280px in Russian; the labels carry the meaning, the icons only mark them. */
+.gw-tab-strip .gw-tab {
+  flex: none;
+  gap: 4px;
+  padding-inline: 7px;
+  white-space: nowrap;
+}
+
+.gw-tab-bar .gw-tab:focus-visible,
+.gw-tab-strip .gw-tab-more:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+/* An invisible natural-width copy of every tab, measured to decide which fit whole (see visibleTabIndices). */
+.gw-tab-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 2px;
+  width: max-content;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.gw-tab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ═══ HEADER ═══ */
+
+/* Scoped under .gw-app to outrank base.css, which the bundle loads after this file. */
+.gw-app .gw-header {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  min-width: 0;
+  padding-inline: var(--gw-column-inset);
+}
+
+.gw-header .gw-header-identity {
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.gw-header .gw-header-identity > * {
+  flex: none;
+  max-width: 100%;
+}
+
+.gw-header .gw-header-branch {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gw-header .gw-header-actions {
+  flex: none;
+  flex-wrap: nowrap;
+}
+
+.gw-header .gw-header-phase-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  gap: 4px;
+}
+
+.gw-header-phase-chip .gw-phase-id {
+  flex: none;
+  margin-right: 0;
+}
+
+/* The phase name stays on one line so the chip keeps its pill shape; a long name is cut with an ellipsis and the
+   chip's tooltip carries it in full. Narrow panels give the branch its own row, so the chip sits beside the mode badge. */
+.gw-header-phase-name {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gw-header-overflow .gw-header-phase-chip {
+  flex: none;
+  min-width: max-content;
+}
+
+.gw-header .gw-header-pr {
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* A decision is waiting: the bar states it, the header only marks it. */
+.gw-header-phase-dot {
+  flex: none;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gw-warning);
+  outline: 1px solid var(--vscode-contrastBorder, transparent);
+}
+
+.gw-header-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gw-menu-label {
+  padding: 6px 10px 2px;
+  color: var(--gw-muted);
+  font-size: 0.85em;
+}
+
+#gw-main:focus {
+  outline: none;
+}
+
+/* ═══ DECISION BAR ═══ */
+
+/* Rows rather than one wrapping line: the first holds the title, the chips that fit and the actions; a second row
+   appears when it shows more chips than the first row alone (see digestLayout). The title and actions never shrink below their
+   content and the chip slot only takes the room between them, so nothing is ever drawn over the buttons.
+   It shares the tab panels' content box (base.css --gw-column-width less the gutters). */
+.gw-decision-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(var(--gw-column-width) - 2 * var(--gw-column-gutter));
+  margin: 0 auto;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--gw-border);
+  border-left: 3px solid var(--gw-warning);
+  background: var(--gw-hover);
+}
+
+.gw-decision-bar-row {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gw-decision-bar-title {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 40%;
+  font-weight: 600;
+}
+
+/* Between 600 and 1000px the gate keeps its phase id and leaves its name to the header and the tooltip, so the chips
+   get the row; a title with no phase id (the plan) keeps its short text. */
+.gw-decision-bar-compact .gw-decision-bar-phase + .gw-decision-bar-text {
+  display: none;
+}
+
+.gw-decision-bar-compact .gw-decision-bar-title {
+  max-width: 30%;
+}
+
+/* The header already names the phase and gate, so a narrow bar gives the actions' row to the chips. */
+.gw-decision-bar-overflow .gw-decision-bar-row > .gw-decision-bar-title {
+  display: none;
+}
+
+.gw-decision-bar-phase {
+  flex: none;
+  font-family: var(--gw-mono);
+}
+
+/* A title that runs out of room wraps between words rather than being cut. */
+.gw-decision-bar-text {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.gw-decision-bar-attention .gw-decision-bar-title {
+  flex: 1 1 auto;
+  max-width: none;
+  font-weight: normal;
+}
+
+.gw-decision-bar-actions .gw-button-secondary {
+  opacity: 0.8;
+}
+
+.gw-decision-bar-links {
+  display: inline-flex;
+  flex: none;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.gw-decision-bar-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.gw-decision-bar-actions .gw-plan-approval {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gw-decision-bar-compact .gw-plan-approval .gw-badge,
+.gw-decision-bar-overflow .gw-plan-approval .gw-badge {
+  display: none;
+}
+
+/* High contrast themes leave the primary fill unset, so the bar's Approve would read as plain text next to the bordered Reject. */
+body.vscode-high-contrast .gw-decision-bar .gw-button-primary,
+body.vscode-high-contrast-light .gw-decision-bar .gw-button-primary {
+  border: 2px solid var(--vscode-contrastActiveBorder, var(--vscode-contrastBorder));
+  background: var(--vscode-button-background, transparent);
+  color: var(--vscode-button-foreground, var(--gw-fg));
+  font-weight: 600;
+}
+
+/* ═══ GATE DIGEST ═══ */
+
+/* The slot between the title and the actions: no basis of its own and its content does not size it, so its width is
+   exactly the room left; it clips only as a guard, since chips are placed whole from their measured widths. */
+.gw-gate-digest-slot {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  contain: inline-size;
+}
+
+.gw-decision-bar-row.gw-gate-digest-second-row {
+  gap: 6px;
+}
+
+/* "+N more" always follows the chips. When warnings that must show leave it no room, the last one ellipsizes (full text
+   in its tooltip) rather than push the expander onto a line of its own; warnings too wide for one line wrap. */
+.gw-gate-digest-second-chips {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.gw-gate-digest-second-chips > :last-child {
+  flex-shrink: 1;
+}
+
+.gw-gate-digest-second-chips-wrapped {
+  flex-wrap: wrap;
+}
+
+/* An invisible natural-width copy of every chip and the expander, measured to decide what fits. */
+.gw-gate-digest-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 6px;
+  width: max-content;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.gw-gate-digest-toggle,
+.gw-gate-digest-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 1px 8px;
+  border: 1px solid var(--gw-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--gw-fg);
+  font: inherit;
+  font-size: 0.92em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Only a chip wider than a whole row of its own is ever narrower than its text: it then ellipsizes, never below ~8
+   characters; its full text is in the tooltip and the expanded list. */
+.gw-gate-digest-chip {
+  max-width: 100%;
+  min-width: min(100%, 8ch);
+}
+
+.gw-gate-digest-chip > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gw-gate-digest-static {
+  cursor: default;
+}
+
+.gw-gate-digest-chip.gw-gate-digest-static:hover {
+  background: transparent;
+}
+
+/* Chips that open material underline on hover like links, since they replace the bar's links. */
+button.gw-gate-digest-chip:hover span {
+  text-decoration: underline;
+}
+
+.gw-gate-digest-warning {
+  border-color: var(--gw-warning);
+}
+
+.gw-gate-digest-warning .codicon {
+  color: var(--gw-warning);
+}
+
+.gw-gate-digest-more {
+  color: var(--gw-muted);
+}
+
+.gw-gate-digest-toggle {
+  padding: 1px 4px;
+  border-color: transparent;
+}
+
+.gw-gate-digest-toggle:hover,
+.gw-gate-digest-chip:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.gw-gate-digest-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gw-gate-digest-line {
+  text-align: start;
+}
+
+/* ═══ DIALOG NOTICES ═══ */
+
+.gw-dialog-notices {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--gw-warning);
+  background: var(--gw-hover);
+}
+
+.gw-dialog-notices-heading {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.gw-dialog-notices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gw-dialog-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-align: start;
+}
+
+.gw-dialog-notice .codicon {
+  color: var(--gw-warning);
+}
+
+/* ═══ GATE STATUS ═══ */
+
+.gw-gate-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 12px;
+}
+
+/* ═══ ATTENTION FLASH ═══ */
+
+/* "What needs me" marks where it landed even when the user is already there; the class is re-added on every jump. */
+.gw-attention-flash {
+  animation: gw-attention-flash 1.6s ease-out;
+}
+
+@keyframes gw-attention-flash {
+  0%, 40% { outline: 2px solid var(--gw-accent); outline-offset: 2px; }
+  100% { outline: 2px solid transparent; outline-offset: 2px; }
+}
+
+/* Anchored jumps stop below the sticky header, tabs and decision bar instead of sliding under them. */
+.gw-tab-panels [id] {
+  scroll-margin-top: calc(var(--gw-sticky-top-height, 0px) + 8px);
+}
+
+/* ═══ NO WORKSPACE ═══ */
+
+.gw-empty-state-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}

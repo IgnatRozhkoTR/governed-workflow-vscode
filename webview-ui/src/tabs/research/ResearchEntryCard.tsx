@@ -1,22 +1,25 @@
 import type { ResearchEntry } from '@api-types';
 import type { JSX } from 'preact';
 import { Badge } from '../../components/Badge';
+import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { CommentIcon } from '../../components/CommentIcon';
 import { useDialogs } from '../../components/DialogHost';
 import { IconButton } from '../../components/IconButton';
 import { StructuredValue } from '../../components/StructuredValue';
 import { useT } from '../../i18n/i18n';
-import { useMutation, useNav } from '../../store/hooks';
+import { capitalizeFirstLetter } from '../../lib/format';
+import { selectOpenCommentCount } from '../../store/store';
+import { useMutation, useNav, useStore, useWorkspaceState } from '../../store/hooks';
 import { deleteResearch, proveResearch } from '../../api/research';
+import { linkedDiscussionTitle } from '../preplanning/discussionLogic';
 import { FindingView } from './FindingView';
-import { parseFindings, proofBadgeSpec } from './findings';
+import { type Finding, findingCommentTarget, findingCountKey, parseFindings, proofBadgeSpec } from './findings';
 
 const REFRESH_STATE = { refreshState: true } as const;
 
 export interface ResearchEntryCardProps {
   readonly entry: ResearchEntry;
-  readonly isAnchored: boolean;
 }
 
 function EntryActions({ entry }: { readonly entry: ResearchEntry }): JSX.Element {
@@ -33,55 +36,77 @@ function EntryActions({ entry }: { readonly entry: ResearchEntry }): JSX.Element
   return (
     <>
       <CommentIcon scope="research" target={`Research: ${entry.topic}`} label={t('vsc.research.commentOnEntry')} />
-      <IconButton icon="check" tone="success" title={t(entry.proven === 1 ? 'research.titleVerified' : 'research.titleMarkVerified')} disabled={entry.proven === 1 || prove.pending} onClick={async () => {
-        await prove.run(true);
-      }} />
-      <IconButton icon="close" tone="danger" title={t(entry.proven === -1 ? 'research.titleRejected' : 'research.titleMarkRejected')} disabled={entry.proven === -1 || prove.pending} onClick={async () => {
-        await prove.run(false);
-      }} />
+      <Button
+        size="sm"
+        variant="secondary"
+        icon="check"
+        label={t('vsc.research.verify')}
+        title={t(entry.proven === 1 ? 'research.titleVerified' : 'research.titleMarkVerified')}
+        disabled={entry.proven === 1 || prove.pending}
+        onClick={async () => {
+          await prove.run(true);
+        }}
+      />
+      <Button
+        size="sm"
+        variant="secondary"
+        icon="close"
+        label={t('vsc.research.reject')}
+        title={t(entry.proven === -1 ? 'research.titleRejected' : 'research.titleMarkRejected')}
+        disabled={entry.proven === -1 || prove.pending}
+        onClick={async () => {
+          await prove.run(false);
+        }}
+      />
       <IconButton icon="trash" title={t('research.titleDeleteEntry')} disabled={remove.pending} onClick={confirmDelete} />
     </>
   );
+}
+
+function useFindingsOpenCommentCount(findings: readonly Finding[]): number {
+  return useStore((s) => findings.reduce((total, finding) => total + selectOpenCommentCount(s, 'research', findingCommentTarget(finding.summary)), 0));
 }
 
 function EntryBadges({ entry }: { readonly entry: ResearchEntry }): JSX.Element {
   const t = useT();
   const [, navigate] = useNav();
   const proof = proofBadgeSpec(entry.proven);
-  const findingCount = parseFindings(entry.findings).findings.length;
+  const findings = parseFindings(entry.findings).findings;
+  const openComments = useFindingsOpenCommentCount(findings);
+  const discussion = useWorkspaceState().discussions?.find((candidate) => candidate.id === entry.discussion_id);
   return (
     <>
       {entry.discussion_id !== null && (
         <button
           type="button"
           class="gw-research-discussion-link"
-          title={t('research.linkedToDiscussion', { id: entry.discussion_id })}
+          title={linkedDiscussionTitle(t, discussion)}
           onClick={(event) => {
             event.stopPropagation();
             navigate({ tab: 'preplanning', anchor: `discussion-${entry.discussion_id}` });
           }}
         >
-          <Badge label={`D#${entry.discussion_id}`} tone="warning" />
+          <Badge icon="comment-discussion" label={t('vsc.research.discussionBadge')} tone="warning" />
         </button>
       )}
-      <span class="gw-research-count">{t('research.findingCount', { count: findingCount })}</span>
-      <Badge label={t(proof.labelKey)} tone={proof.tone} />
+      <span class="gw-research-count">{t(findingCountKey(findings.length), { count: findings.length })}</span>
+      <Badge label={capitalizeFirstLetter(t(proof.labelKey))} tone={proof.tone} />
+      {openComments > 0 && <Badge icon="comment" label={String(openComments)} tone="warning" title={t('vsc.research.openFindingComments', { count: openComments })} />}
     </>
   );
 }
 
-export function ResearchEntryCard({ entry, isAnchored }: ResearchEntryCardProps): JSX.Element {
+export function ResearchEntryCard({ entry }: ResearchEntryCardProps): JSX.Element {
   const t = useT();
   const { findings, unparsed } = parseFindings(entry.findings);
   return (
     <Card
-      key={`${entry.id}-${isAnchored}`}
       id={`research-${entry.id}`}
+      persistKey={`research-v2-${entry.id}`}
       title={entry.topic || t('research.untitledResearch')}
       badge={<EntryBadges entry={entry} />}
       actions={<EntryActions entry={entry} />}
       collapsible
-      defaultCollapsed={!isAnchored}
     >
       {entry.summary !== '' && <div class="gw-research-summary">{entry.summary}</div>}
       {entry.proven_notes !== null && entry.proven_notes !== '' && (

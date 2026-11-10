@@ -1,4 +1,6 @@
 import type { JSX } from 'preact';
+import { useT } from '../i18n/i18n';
+import { humanizeKey } from './humanizeKey';
 import { Markdown } from './Markdown';
 
 export interface StructuredValueProps {
@@ -58,24 +60,28 @@ function StructuredList({ items, depth }: { readonly items: readonly unknown[]; 
 }
 
 function StructuredTable({ rows, columns }: { readonly rows: readonly FlatRecord[]; readonly columns: readonly string[] }): JSX.Element {
+  const t = useT();
   return (
-    <table class="gw-structured-table">
-      <thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
-      <tbody>
-        {rows.map((row, index) => (
-          <tr key={index}>{columns.map((column) => <td key={column}><StructuredValue value={row[column]} /></td>)}</tr>
-        ))}
-      </tbody>
-    </table>
+    <div class="gw-table-scroll">
+      <table class="gw-structured-table">
+        <thead><tr>{columns.map((column) => <th key={column}>{humanizeKey(t, column)}</th>)}</tr></thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={index}>{columns.map((column) => <td key={column}><StructuredValue value={row[column]} /></td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function StructuredObject({ value, depth }: { readonly value: FlatRecord; readonly depth: number }): JSX.Element {
+  const t = useT();
   return (
     <dl class={`gw-structured-object gw-structured-depth-${Math.min(depth, 3)}`}>
       {Object.entries(value).map(([key, field]) => (
         <div key={key} class="gw-structured-entry">
-          <dt>{key}</dt>
+          <dt>{humanizeKey(t, key)}</dt>
           <dd><StructuredValue value={field} depth={depth + 1} /></dd>
         </div>
       ))}

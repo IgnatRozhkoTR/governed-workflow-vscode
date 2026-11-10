@@ -89,8 +89,8 @@ describe('buildExecutionFlow', () => {
 
 describe('buildExecutionFlowWithTooltips', () => {
   it('returns full names for truncated labels', () => {
-    const longName = 'A very long sub-phase name that is truncated';
-    const longTitle = 'An extremely long task title that will not fit';
+    const longName = 'A very long sub-phase name that is truncated '.repeat(2);
+    const longTitle = 'An extremely long task title that will not fit '.repeat(2);
     const plan: Plan = { execution: [{ id: '3.1', name: longName, tasks: [{ title: longTitle, agent: 'dev' }] }] };
     const { source, tooltips } = buildExecutionFlowWithTooltips(plan, 'LR');
     expect(source).toContain('…');

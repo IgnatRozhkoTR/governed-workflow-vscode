@@ -1,4 +1,5 @@
-import type { Criterion } from '@api-types';
+import type { Criterion, PlanSubPhase } from '@api-types';
+import { shouldCollapseSubPhase } from '../../../webview-ui/src/tabs/planning/subPhaseModel';
 import { describe, expect, it } from 'vitest';
 import { buildDetailsJson, criterionTypeKey, readCriterionDetails, splitNames } from '../../../webview-ui/src/tabs/planning/criteriaModel';
 import {
@@ -109,5 +110,18 @@ describe('progressModel', () => {
     expect(hasDetails({})).toBe(false);
     expect(hasDetails({ a: 1 })).toBe(true);
     expect(hasDetails('x')).toBe(true);
+  });
+});
+
+describe('shouldCollapseSubPhase', () => {
+  const items = [{ id: '3.1' }, { id: '3.2' }] as PlanSubPhase[];
+
+  it('shouldCollapseSubPhase_shouldCollapseOthers_whenOneIsCurrent', () => {
+    expect(shouldCollapseSubPhase('3.2.1', items, items[0])).toBe(true);
+    expect(shouldCollapseSubPhase('3.2.1', items, items[1])).toBe(false);
+  });
+
+  it('shouldCollapseSubPhase_shouldKeepAllOpen_whenNoneIsCurrent', () => {
+    expect(shouldCollapseSubPhase('2.0', items, items[0])).toBe(false);
   });
 });

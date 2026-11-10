@@ -4,7 +4,6 @@ import { Badge } from '../../components/Badge';
 import { EmptyState } from '../../components/EmptyState';
 import { useT } from '../../i18n/i18n';
 import { useWorkspaceState } from '../../store/hooks';
-import type { TabProps } from '../types';
 import { ResearchEntryCard } from './ResearchEntryCard';
 
 function ResearchStatus({ research }: { readonly research: readonly ResearchEntry[] }): JSX.Element {
@@ -17,7 +16,7 @@ function ResearchStatus({ research }: { readonly research: readonly ResearchEntr
   return <Badge label={label} tone={pending > 0 ? 'warning' : rejected > 0 ? 'danger' : 'success'} />;
 }
 
-export function ResearchTab({ nav }: TabProps): JSX.Element {
+export function ResearchTab(): JSX.Element {
   const t = useT();
   const research = useWorkspaceState().research ?? [];
   if (research.length === 0) {
@@ -27,7 +26,7 @@ export function ResearchTab({ nav }: TabProps): JSX.Element {
     <div class="gw-research">
       <div class="gw-research-status"><ResearchStatus research={research} /></div>
       {research.map((entry) => (
-        <ResearchEntryCard key={entry.id} entry={entry} isAnchored={nav.anchor === `research-${entry.id}`} />
+        <ResearchEntryCard key={entry.id} entry={entry} />
       ))}
     </div>
   );

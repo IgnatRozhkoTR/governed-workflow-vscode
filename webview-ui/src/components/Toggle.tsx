@@ -6,10 +6,11 @@ export interface ToggleProps {
   readonly checked: boolean;
   readonly onChange: (v: boolean) => void | Promise<void>;
   readonly label?: string;
+  readonly ariaLabel?: string;
   readonly disabled?: boolean;
 }
 
-export function Toggle({ checked, onChange, label, disabled = false }: ToggleProps): JSX.Element {
+export function Toggle({ checked, onChange, label, ariaLabel, disabled = false }: ToggleProps): JSX.Element {
   const [isBusy, change] = useBusyHandler(onChange);
   return (
     <label class={classNames('gw-toggle', (disabled || isBusy) && 'gw-toggle-disabled')}>
@@ -17,6 +18,7 @@ export function Toggle({ checked, onChange, label, disabled = false }: TogglePro
         type="checkbox"
         role="switch"
         checked={checked}
+        aria-label={label ?? ariaLabel}
         disabled={disabled || isBusy}
         onChange={(event) => change(event.currentTarget.checked)}
       />

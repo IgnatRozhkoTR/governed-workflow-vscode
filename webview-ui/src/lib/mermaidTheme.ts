@@ -5,6 +5,11 @@ export interface MermaidTheme {
   readonly themeVariables: Readonly<Record<string, string>>;
 }
 
+// Long subgraph titles wrap at the CSS max width of .cluster-label (components.css); the rank gap must exceed the
+// overhang of a wrapped title past its cluster, and the bottom title margin reserves room for a second title line.
+const FLOWCHART_LAYOUT = "'nodeSpacing': 28, 'rankSpacing': 60, 'padding': 10, 'htmlLabels': true, "
+  + "'subGraphTitleMargin': {'top': 4, 'bottom': 20}, 'useMaxWidth': false";
+
 const LIGHT_BODY_CLASSES = ['vscode-light', 'vscode-high-contrast-light'];
 
 const LIGHT_THEME: MermaidTheme = {
@@ -49,7 +54,7 @@ export function getMermaidInit(): string {
     .map(([name, value]) => `'${name}': '${value}'`)
     .join(', ');
   return `%%{init: {'theme': '${theme}', 'themeVariables': {${variables}}, `
-    + `'flowchart': {'nodeSpacing': 25, 'rankSpacing': 45, 'padding': 10, 'useMaxWidth': false}, `
+    + `'flowchart': {${FLOWCHART_LAYOUT}}, `
     + `'classDiagram': {'useMaxWidth': false}}}%%`;
 }
 

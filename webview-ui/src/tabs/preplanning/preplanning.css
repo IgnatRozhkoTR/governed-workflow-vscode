@@ -1,23 +1,52 @@
 .gw-pp { display: flex; flex-direction: column; gap: 16px; }
-.gw-pp-group { display: flex; flex-direction: column; gap: 8px; }
+.gw-pp-group { display: flex; flex-direction: column; gap: 8px; border-radius: 4px; }
 .gw-pp-heading { margin: 0; font-size: 1.1em; font-weight: 600; }
 .gw-pp-heading-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .gw-pp-toggles { display: flex; gap: 12px; margin-left: auto; }
 .gw-pp-list { display: flex; flex-direction: column; gap: 8px; }
 
-.gw-pp-inline { position: relative; }
-.gw-pp-inline-affordance { position: absolute; top: 2px; right: 2px; opacity: 0.55; }
-.gw-pp-inline:hover > .gw-pp-inline-affordance, .gw-pp-inline-affordance:focus-within { opacity: 1; }
-.gw-pp-inline-content { padding-right: 32px; }
-.gw-pp-inline-form { display: flex; gap: 6px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--gw-border); }
+.gw-pp-comment-trigger {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 4px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-icon-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+.gw-pp-comment-trigger:hover, .gw-pp-comment-trigger-active { background: var(--vscode-toolbar-hoverBackground); }
+.gw-pp-comment-trigger:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+/* Same rule as the other tabs' comment icons (components.css .gw-comment-icon): faint at rest without comments, full
+   while the item is hovered or holds focus, and always full on touch and other coarse pointers. */
+:where(.gw-pp-comment-trigger:not(.gw-pp-comment-trigger-open, .gw-pp-comment-trigger-active)) { opacity: 0.4; transition: opacity 0.1s; }
+.gw-pp-comment-trigger:focus-visible,
+:where(.gw-pp-inline):hover .gw-pp-comment-trigger,
+:where(.gw-pp-inline):focus-within .gw-pp-comment-trigger { opacity: 1; }
+@media (hover: none), (pointer: coarse) {
+  :where(.gw-pp-comment-trigger:not(.gw-pp-comment-trigger-open, .gw-pp-comment-trigger-active)) { opacity: 1; }
+}
+.gw-pp-comment-count { font-size: 0.85em; font-weight: 600; }
+.gw-pp-inline-thread { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--gw-border); }
+.gw-pp-inline-form { display: flex; gap: 6px; align-items: center; }
 .gw-pp-inline-form > :first-child { flex: 1; }
 
-.gw-pp-research-card { padding: 8px 10px; border: 1px solid var(--gw-border); border-radius: 4px; cursor: pointer; background: var(--gw-bg); }
-.gw-pp-research-card:hover, .gw-pp-research-card:focus-visible { border-color: var(--gw-accent); outline: none; }
-.gw-pp-research-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-.gw-pp-research-topic { font-weight: 600; }
-.gw-pp-research-summary { margin-top: 4px; color: var(--gw-muted); white-space: pre-wrap; }
+.gw-pp-research-card { padding: 8px 10px; border: 1px solid var(--gw-border); border-radius: 4px; background: var(--gw-bg); }
+.gw-pp-research-card:hover, .gw-pp-research-card:focus-within { border-color: var(--gw-accent); }
+.gw-pp-research-head { display: flex; align-items: center; gap: 8px; }
+.gw-pp-research-open { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; padding: 0; border: none; background: transparent; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.gw-pp-research-open:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.gw-pp-research-topic { flex: 1; min-width: 0; font-weight: 600; }
+.gw-pp-research-summary { display: -webkit-box; margin-top: 4px; overflow: hidden; color: var(--gw-muted); white-space: pre-wrap; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+
+.gw-pp-ticket { display: flex; flex-direction: column; gap: 8px; }
+.gw-pp-ticket-empty { margin: 0; color: var(--gw-muted); }
+.gw-pp-ticket-refs { display: flex; flex-direction: column; gap: 4px; }
 
 .gw-pp-new-discussion { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
 .gw-pp-new-discussion > :nth-child(2) { flex: 1; }
+.gw-pp-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .gw-pp-gate-description { margin: 0 0 10px; color: var(--gw-muted); }

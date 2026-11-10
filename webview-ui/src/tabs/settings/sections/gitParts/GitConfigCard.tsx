@@ -11,7 +11,7 @@ export function GitConfigCard({ active }: { readonly active: boolean }): JSX.Ele
   const t = useT();
   const config = useResource('git', 'git-config', getGitConfig, { active, refetchOnState: false });
   return (
-    <Card title={t('cards.gitConfiguration')}>
+    <Card id="git-config" title={t('cards.gitConfiguration')}>
       <ResourceView resource={config}>{(data) => <GitConfigForm initial={data} />}</ResourceView>
     </Card>
   );
@@ -33,6 +33,7 @@ function GitConfigForm({ initial }: { readonly initial: GitConfig }): JSX.Elemen
         <label class="gw-field-label">{t('labels.provider')}</label>
         <Select
           value={draft.provider}
+          ariaLabel={t('labels.provider')}
           options={[
             { value: 'local', label: t('gitProvider.local') },
             { value: 'github', label: t('gitProvider.github') },
@@ -45,18 +46,18 @@ function GitConfigForm({ initial }: { readonly initial: GitConfig }): JSX.Elemen
         <>
           <div class="gw-git-field">
             <label class="gw-field-label">{t('labels.host')}</label>
-            <TextField value={draft.host} onInput={(host) => patch({ host })} placeholder={t('placeholders.gitHost')} />
+            <TextField value={draft.host} ariaLabel={t('labels.host')} onInput={(host) => patch({ host })} placeholder={t('placeholders.gitHost')} />
           </div>
           <div class="gw-git-field">
             <label class="gw-field-label">{t('labels.apiToken')}</label>
-            <TextField type="password" value={draft.token} onInput={(token) => patch({ token })} placeholder={t('placeholders.enterToken')} />
+            <TextField type="password" value={draft.token} ariaLabel={t('labels.apiToken')} onInput={(token) => patch({ token })} placeholder={t('placeholders.enterToken')} />
           </div>
         </>
       )}
       {!isMulti && (
         <div class="gw-git-field">
           <label class="gw-field-label">{t('labels.defaultBranch')}</label>
-          <TextField value={draft.default_branch} onInput={(defaultBranch) => patch({ default_branch: defaultBranch })} placeholder={t('placeholders.develop')} />
+          <TextField value={draft.default_branch} ariaLabel={t('labels.defaultBranch')} onInput={(defaultBranch) => patch({ default_branch: defaultBranch })} placeholder={t('placeholders.develop')} />
         </div>
       )}
       <div class="gw-git-actions">

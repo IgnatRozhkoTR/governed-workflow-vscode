@@ -46,6 +46,12 @@ const PANEL_TABS: Readonly<Record<string, TabId>> = {
   phase: 'phase',
 };
 
+// Gate rejections are stored as "reject:<phase>" comments; the phase tab lists them in its phase history card.
+const PHASE_REJECTION_PREFIX = 'reject:';
+const PHASE_HISTORY_NAV: NavTarget = { tab: 'phase', anchor: 'phase-history' };
+// Pre-planning comments on a whole research entry target its numeric id; the Research tab's own comments target finding or topic text.
+const RESEARCH_ENTRY_TARGET = /^\d+$/;
+
 export function matchesFilter(comment: Pick<ReviewComment, 'resolved'>, filter: CommentFilter): boolean {
   switch (filter) {
     case 'open':
@@ -77,8 +83,15 @@ export function isCodeComment(comment: Pick<ReviewComment, 'scope' | 'file_path'
 }
 
 export function panelNavFor(comment: Pick<ReviewComment, 'scope' | 'target'>): NavTarget | undefined {
-  const tab = PANEL_TABS[comment.scope];
+  if (comment.target?.startsWith(PHASE_REJECTION_PREFIX) === true) {
+    return PHASE_HISTORY_NAV;
+  }
+  const tab = isResearchEntryComment(comment) ? 'preplanning' : PANEL_TABS[comment.scope];
   return tab === undefined ? undefined : { tab, comment: { scope: comment.scope, target: comment.target ?? '' } };
+}
+
+function isResearchEntryComment(comment: Pick<ReviewComment, 'scope' | 'target'>): boolean {
+  return comment.scope === 'research' && RESEARCH_ENTRY_TARGET.test(comment.target ?? '');
 }
 
 function toAreaGroup(scope: string, comments: readonly ReviewComment[]): AreaGroup {

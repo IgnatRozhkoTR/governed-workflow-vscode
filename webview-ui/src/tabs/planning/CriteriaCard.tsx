@@ -6,7 +6,8 @@ import {
   Badge, Button, Card, Commentable, Dialog, IconButton, KeyValueList, ResourceView, Select, StructuredValue, TextField, useDialogs,
 } from '../../components';
 import { useT } from '../../i18n/i18n';
-import { useMutation, useResource } from '../../store/hooks';
+import { capitalizeFirstLetter } from '../../lib/format';
+import { useMutation, useResource, useWorkspaceState } from '../../store/hooks';
 import { buildDetailsJson, CRITERION_TYPES, criterionTypeKey, readCriterionDetails, type CriterionDraft } from './criteriaModel';
 
 const EMPTY_DRAFT: CriterionDraft = { type: 'unit_test', description: '', file: '', names: '' };
@@ -16,12 +17,11 @@ export function CriteriaCard({ active }: { readonly active: boolean }): JSX.Elem
   const criteria = useResource('criteria', 'list', () => listCriteria().then((response) => response.criteria), { active });
   const [isAdding, setAdding] = useState(false);
   const [detailsFor, setDetailsFor] = useState<Criterion | undefined>(undefined);
+  const isPlanApproved = useWorkspaceState().plan_status === 'approved';
   return (
     <Card
       id="plan-criteria"
       title={t('cards.acceptanceCriteria')}
-      collapsible
-      defaultCollapsed
       persistKey="planning-criteria"
       badge={criteria.data === undefined ? undefined : <Badge label={String(criteria.data.length)} tone="neutral" />}
       actions={<Button size="sm" variant="secondary" icon="add" label={t('vsc.planning.addCriterion')} onClick={() => setAdding(true)} />}
@@ -29,7 +29,7 @@ export function CriteriaCard({ active }: { readonly active: boolean }): JSX.Elem
       <ResourceView resource={criteria} empty={(list) => list.length === 0} emptyMessage={t('criteria.noEntries')}>
         {(list) => (
           <>
-            <p class="gw-muted gw-planning-hint">{t('criteria.acceptedOnPlanApproval')}</p>
+            {!isPlanApproved && <p class="gw-muted gw-planning-hint">{t('criteria.acceptedOnPlanApproval')}</p>}
             <ul class="gw-planning-criteria">
               {list.map((criterion) => <CriterionRow key={criterion.id} criterion={criterion} onShowDetails={setDetailsFor} />)}
             </ul>
@@ -45,12 +45,12 @@ export function CriteriaCard({ active }: { readonly active: boolean }): JSX.Elem
 function StatusBadge({ criterion }: { readonly criterion: Criterion }): JSX.Element | null {
   const t = useT();
   if (criterion.status === 'proposed') {
-    return <Badge tone="warning" label={criterion.source === 'agent' ? t('badges.proposedByAgent') : t('badges.pendingReview')} />;
+    return <Badge tone="warning" label={capitalizeFirstLetter(t(criterion.source === 'agent' ? 'badges.proposedByAgent' : 'badges.pendingReview'))} />;
   }
   if (criterion.status === 'accepted') {
-    return <Badge tone="success" label={t('badges.accepted')} />;
+    return <Badge tone="success" label={capitalizeFirstLetter(t('badges.accepted'))} />;
   }
-  return criterion.status === 'rejected' ? <Badge tone="danger" label={t('badges.rejected')} /> : null;
+  return criterion.status === 'rejected' ? <Badge tone="danger" label={capitalizeFirstLetter(t('badges.rejected'))} /> : null;
 }
 
 function ValidationBadge({ criterion }: { readonly criterion: Criterion }): JSX.Element | null {
@@ -58,9 +58,9 @@ function ValidationBadge({ criterion }: { readonly criterion: Criterion }): JSX.
   const isCustom = criterion.type === 'custom';
   const title = criterion.validation_message ?? undefined;
   if (criterion.validated === 1) {
-    return <Badge tone="success" label={t(isCustom ? 'badges.userApproved' : 'badges.passed')} title={title} icon="pass" />;
+    return <Badge tone="success" label={capitalizeFirstLetter(t(isCustom ? 'badges.userApproved' : 'badges.passed'))} title={title} icon="pass" />;
   }
-  return criterion.validated === -1 ? <Badge tone="danger" label={t(isCustom ? 'badges.userRejected' : 'badges.failed')} title={title} icon="error" /> : null;
+  return criterion.validated === -1 ? <Badge tone="danger" label={capitalizeFirstLetter(t(isCustom ? 'badges.userRejected' : 'badges.failed'))} title={title} icon="error" /> : null;
 }
 
 interface CriterionRowProps {

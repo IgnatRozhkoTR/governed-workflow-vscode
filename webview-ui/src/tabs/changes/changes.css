@@ -1,6 +1,11 @@
 .gw-changes { display: flex; flex-direction: column; gap: 8px; }
-.gw-changes-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.gw-changes-filter { flex: 1; min-width: 160px; max-width: 360px; }
+.gw-changes-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.gw-changes-controls .gw-select { min-width: 0; max-width: 100%; flex: 1 1 140px; }
+.gw-changes-filter { flex: 1 1 140px; min-width: 120px; max-width: 360px; }
+.gw-changes-filterbar { flex: 1 1 240px; flex-wrap: nowrap; }
+.gw-changes-overflow { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.gw-changes-menu-item { display: flex; align-items: center; gap: 6px; }
+.gw-changes .gw-tabs-sub { margin-bottom: 0; }
 
 .gw-changes-files {
   display: flex;
@@ -26,11 +31,57 @@
 .gw-changes-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .gw-changes-moved { font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gw-changes-spacer { flex: 1; }
-.gw-changes-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gw-warning); flex-shrink: 0; }
-.gw-changes-action { opacity: 0; transition: opacity 0.1s; }
+.gw-changes-thread-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--gw-warning);
+  color: var(--vscode-editor-background);
+  font-size: 0.85em;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+.gw-changes-thread-count .codicon { font-size: 12px; }
+/* Fixed-width trailing cells keep the action, comment and letter columns aligned on every row. */
+.gw-changes-action { width: 22px; flex: none; display: inline-flex; justify-content: center; opacity: 0; transition: opacity 0.1s; }
 .gw-changes-row:hover .gw-changes-action,
 .gw-changes-row:focus-within .gw-changes-action { opacity: 1; }
 .gw-changes-stat { display: flex; gap: 6px; font-family: var(--gw-mono); font-size: 0.9em; flex-shrink: 0; }
+.gw-changes-comment-slot { width: 36px; flex: none; display: inline-flex; justify-content: flex-start; }
+.gw-changes-threads { display: flex; flex-direction: column; gap: 6px; margin: 2px 8px 6px; padding: 6px 8px; border-left: 2px solid var(--gw-border); cursor: auto; }
+.gw-changes-threads .gw-thread-header { justify-content: flex-start; }
+.gw-changes-repo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gw-changes-repo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--gw-border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--gw-fg);
+  font: inherit;
+  cursor: pointer;
+}
+.gw-changes-repo-chip:hover { background: var(--vscode-list-hoverBackground); }
+.gw-changes-repo-chip:focus-visible { outline: 1px solid var(--gw-accent); outline-offset: 1px; }
+.gw-changes-repo-chip-active { border-color: var(--gw-accent); background: var(--vscode-list-inactiveSelectionBackground); font-weight: 600; }
+.gw-changes-repo-chip-count { color: var(--gw-muted); font-weight: normal; }
+.gw-changes-repo-chip-threads { color: var(--gw-status-text, var(--gw-warning)); font-weight: normal; }
+.gw-changes-repos { display: flex; flex-direction: column; gap: 10px; }
+.gw-changes-repo { display: flex; flex-direction: column; gap: 4px; }
+.gw-changes-repo-header { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.gw-changes-letter { width: 14px; flex: none; text-align: center; font-family: var(--gw-mono); font-weight: 600; }
+.gw-changes-kind-added { color: var(--vscode-gitDecoration-addedResourceForeground, var(--gw-success)); }
+.gw-changes-kind-modified { color: var(--vscode-gitDecoration-modifiedResourceForeground, var(--gw-warning)); }
+.gw-changes-kind-deleted { color: var(--vscode-gitDecoration-deletedResourceForeground, var(--gw-danger)); }
+.gw-changes-kind-renamed { color: var(--vscode-gitDecoration-renamedResourceForeground, var(--gw-info)); }
+.gw-changes-name.gw-changes-kind-deleted { text-decoration: line-through; }
 .gw-changes-add { color: var(--gw-success); }
 .gw-changes-del { color: var(--gw-danger); }
 
@@ -88,3 +139,4 @@
   .gw-changes-author,
   .gw-changes-date { display: none; }
 }
+.gw-changes-note { margin: 0 0 8px; }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -11,9 +11,16 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const hostBundle = join(repoRoot, '.harness-build', 'host.mjs');
 const PORT = Number(process.env.GW_HARNESS_PORT ?? 5199);
 const SERVER_URL = (process.env.GW_SERVER_URL ?? 'http://localhost:5111').replace(/\/+$/, '');
-const TOKEN = process.env.GW_TOKEN;
+const HOST = process.env.GW_HARNESS_HOST ?? '127.0.0.1';
+const TOKEN = readToken();
 const MIME = { '.js': 'text/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.map': 'application/json', '.json': 'application/json' };
 const sessions = new Map();
+const BROWSER_COOKIE = 'gw-harness-browser';
+
+function readToken() {
+  const tokenFile = process.env.GW_TOKEN_FILE;
+  return tokenFile ? readFileSync(tokenFile, 'utf8').trim() : process.env.GW_TOKEN;
+}
 
 async function bundleHost() {
   await esbuild.build({
@@ -29,28 +36,40 @@ async function bundleHost() {
   return import(`${pathToFileURL(hostBundle).href}?t=${Date.now()}`);
 }
 
-function createSession(host, project, branch) {
+function createSession(host, project, branch, browserId) {
   const id = randomUUID();
   const session = { id, queue: [], response: undefined, host: undefined };
   const push = (message) => {
     const data = `data: ${JSON.stringify(message)}\n\n`;
     session.response === undefined ? session.queue.push(data) : session.response.write(data);
   };
-  session.host = host.startHarnessSession({ repoRoot, serverUrl: SERVER_URL, token: TOKEN, project, branch, onMessage: push });
+  session.host = host.startHarnessSession({ repoRoot, serverUrl: SERVER_URL, token: TOKEN, project, branch, browserId, onMessage: push });
   sessions.set(id, session);
   return session;
 }
 
-async function servePage(res, host, url) {
+// Each browser context gets its own id, so remembered tabs are isolated between parallel QA sessions.
+// ?browser=<id> pins one explicitly, e.g. to share memory between two contexts on purpose.
+function readCookie(req, name) {
+  const pair = (req.headers.cookie ?? '').split(';').map((part) => part.trim().split('=')).find(([key]) => key === name);
+  return pair === undefined || pair[1] === undefined || pair[1] === '' ? undefined : decodeURIComponent(pair[1]);
+}
+
+async function servePage(req, res, host, url) {
   const project = url.searchParams.get('project') ?? process.env.GW_PROJECT;
   const branch = url.searchParams.get('branch') ?? process.env.GW_BRANCH;
   if (!project || !branch) {
     res.writeHead(400).end('Set GW_PROJECT and GW_BRANCH, or pass ?project=&branch=.');
     return;
   }
-  const session = createSession(host, project, branch);
+  const browserId = url.searchParams.get('browser') ?? readCookie(req, BROWSER_COOKIE) ?? randomUUID();
+  const session = createSession(host, project, branch, browserId);
   await session.host.firstState;
-  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(harnessHtml(session));
+  res.writeHead(200, {
+    'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'no-store',
+    'set-cookie': `${BROWSER_COOKIE}=${encodeURIComponent(browserId)}; Path=/; SameSite=Strict; HttpOnly`,
+  }).end(harnessHtml(session));
 }
 
 function harnessHtml(session) {
@@ -104,10 +123,10 @@ function serveAsset(res, pathname) {
 
 const host = await bundleHost();
 createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const url = new URL(req.url, `http://${HOST}:${PORT}`);
   try {
     if (url.pathname === '/') {
-      await servePage(res, host, url);
+      await servePage(req, res, host, url);
     } else if (url.pathname.startsWith('/events/')) {
       serveEvents(req, res, url.pathname.slice('/events/'.length));
     } else if (url.pathname.startsWith('/rpc/') && req.method === 'POST') {
@@ -119,6 +138,6 @@ createServer(async (req, res) => {
     console.error(error);
     res.writeHead(500).end(String(error));
   }
-}).listen(PORT, '127.0.0.1', () => {
-  console.log(`Harness: http://localhost:${PORT}/?project=${process.env.GW_PROJECT ?? '<id>'}&branch=${process.env.GW_BRANCH ?? '<branch>'}  (panel ${SERVER_URL}, token ${TOKEN ? 'set' : 'MISSING'})`);
+}).listen(PORT, HOST, () => {
+  console.log(`Harness: http://${HOST}:${PORT}/?project=${process.env.GW_PROJECT ?? '<id>'}&branch=${process.env.GW_BRANCH ?? '<branch>'}  (panel ${SERVER_URL}, token ${TOKEN ? 'set' : 'MISSING'})`);
 });

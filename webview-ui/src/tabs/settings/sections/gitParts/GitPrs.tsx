@@ -5,7 +5,7 @@ import { Badge, Button, Card, IconButton, ResourceView, Select, TextField, useDi
 import { useT } from '../../../../i18n/i18n';
 import { rpc } from '../../../../rpc/rpcClient';
 import { useMutation, useResource, useWorkspaceState } from '../../../../store/hooks';
-import { shortenUrl } from './gitLogic';
+import { shortenUrl } from '../../../../lib/format';
 
 const WHOLE_PROJECT = '';
 
@@ -16,7 +16,7 @@ export function GitPrs({ active }: { readonly active: boolean }): JSX.Element {
   const repos = useResource('git', 'project-repos', listProjectRepos, { active: active && isMulti, refetchOnState: false });
   const repoOptions = [{ value: WHOLE_PROJECT, label: t('gitCockpit.prs.repoWholeProject') }, ...(repos.data?.repos ?? []).map((repo) => ({ value: String(repo.id), label: repo.name }))];
   return (
-    <Card title={t('gitCockpit.prs.title')} badge={<Badge tone="neutral" label={String(prs.data?.prs.length ?? 0)} />}>
+    <Card id="git-prs" title={t('gitCockpit.prs.title')} badge={<Badge tone="neutral" label={String(prs.data?.prs.length ?? 0)} />}>
       <ResourceView resource={prs} empty={(data) => data.prs.length === 0} emptyMessage={t('gitCockpit.prs.empty')}>
         {(data) => (
           <div class="gw-git-list">
@@ -77,9 +77,9 @@ function AddPrForm({ repoOptions }: { readonly repoOptions: readonly { value: st
   };
   return (
     <div class="gw-git-inline">
-      {repoOptions !== undefined && <Select value={repoId} options={repoOptions} onChange={setRepoId} />}
-      <TextField value={url} onInput={setUrl} placeholder={t('gitCockpit.prs.urlPlaceholder')} onSubmit={submit} />
-      <TextField value={title} onInput={setTitle} placeholder={t('gitCockpit.prs.titlePlaceholder')} onSubmit={submit} />
+      {repoOptions !== undefined && <Select value={repoId} options={repoOptions} onChange={setRepoId} ariaLabel={t('vsc.git.prRepository')} />}
+      <TextField value={url} onInput={setUrl} placeholder={t('gitCockpit.prs.urlPlaceholder')} ariaLabel={t('gitCockpit.prs.urlPlaceholder')} onSubmit={submit} />
+      <TextField value={title} onInput={setTitle} placeholder={t('gitCockpit.prs.titlePlaceholder')} ariaLabel={t('gitCockpit.prs.titlePlaceholder')} onSubmit={submit} />
       <Button variant="primary" size="sm" icon="add" label={t('gitCockpit.prs.add')} busy={add.pending} onClick={submit} />
     </div>
   );

@@ -24,19 +24,24 @@ export function toThreadMessage(entry: ReviewComment | Reply): ThreadMessage {
   return { id: entry.id, author: entry.author, text: entry.text, createdAt: entry.created_at, resolved: 'resolved' in entry ? entry.resolved : undefined };
 }
 
-async function changeComments(change: Promise<unknown>): Promise<void> {
+// Callers pass the result to ThreadView, which reports a rejection and keeps the draft.
+export async function changeComments(change: Promise<unknown>): Promise<void> {
   await change;
   store.invalidate(...COMMENT_MUTATION.invalidates);
   await store.refreshState();
 }
 
-export function CommentThread(props: CommentThreadProps): JSX.Element {
-  const { scope, target, showResolved = true } = props;
-  const t = useT();
+export interface CommentRootsProps {
+  readonly scope: string;
+  readonly target: string;
+  readonly showResolved?: boolean;
+  readonly onDelete?: (root: ReviewComment) => Promise<void>;
+}
+
+export function CommentRoots({ scope, target, showResolved = true, onDelete }: CommentRootsProps): JSX.Element {
   const roots = useComments(scope, target).filter((root) => showResolved || !root.resolved);
   return (
-    <div class="gw-comment-thread">
-      <div class="gw-comment-thread-title">{t('comments.title')}</div>
+    <>
       {roots.map((root) => (
         <ThreadView
           key={root.id}
@@ -46,8 +51,19 @@ export function CommentThread(props: CommentThreadProps): JSX.Element {
           collapsedWhenResolved
           onReply={(text) => changeComments(replyComment(root.id, text))}
           onToggleResolved={(next) => changeComments(resolveComment(root.id, next))}
+          onDelete={onDelete === undefined ? undefined : () => onDelete(root)}
         />
       ))}
+    </>
+  );
+}
+
+export function CommentThread(props: CommentThreadProps): JSX.Element {
+  const t = useT();
+  return (
+    <div class="gw-comment-thread">
+      <div class="gw-comment-thread-title">{t('comments.title')}</div>
+      <CommentRoots scope={props.scope} target={props.target} showResolved={props.showResolved} />
       <NewCommentBox {...props} />
     </div>
   );

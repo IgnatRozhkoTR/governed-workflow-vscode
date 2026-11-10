@@ -5,6 +5,8 @@
   align-items: start;
 }
 
+.gw-scratchpads--empty { grid-template-columns: 1fr; }
+
 .gw-scratchpads-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .gw-scratchpads-files { display: flex; flex-direction: column; gap: 1px; }
 
@@ -52,3 +54,8 @@
 @media (max-width: 640px) {
   .gw-scratchpads { grid-template-columns: 1fr; }
 }
+
+.gw-scratchpads-section { display: flex; flex-direction: column; gap: 1px; }
+.gw-scratchpads-section + .gw-scratchpads-section { margin-top: 8px; }
+.gw-scratchpads-section-header { padding: 4px 8px; font-size: 0.85em; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gw-muted); }
+.gw-scratchpads-section-empty { padding: 2px 8px; font-size: 0.9em; }

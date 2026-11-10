@@ -197,7 +197,7 @@ describe('ApiClient.getState', () => {
 
     const result = await client().getState(WORKSPACE);
 
-    expect(result).toEqual({ notModified: false, state: { phase: '2.0' }, etag: '"v2"' });
+    expect(result).toEqual({ notModified: false, state: { phase: '2.0', pending_gate: null }, etag: '"v2"' });
   });
 
   it('should leave etag undefined when the response has no ETag header', async () => {

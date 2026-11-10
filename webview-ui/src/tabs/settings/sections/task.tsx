@@ -9,13 +9,13 @@ import { useMutation, useResource, useWorkspaceState } from '../../../store/hook
 import type { SettingsSectionModule } from '../../types';
 import { Field, SectionShell, SubSection, useDraft } from './parts';
 import { SETTINGS_MESSAGES } from './settingsMessages';
+import { useStartClaude } from './useStartClaude';
 
 const CONTEXT_ROWS = 8;
 const TOPICS_AFTER_SAVE = ['context'] as const;
 
 function ClaudeActions(): JSX.Element {
   const t = useT();
-  const dialogs = useDialogs();
   const toast = useToast();
   const workingDir = useWorkspaceState().working_dir;
   const attempt = async (action: () => Promise<unknown>, successMessage?: string): Promise<void> => {
@@ -28,21 +28,11 @@ function ClaudeActions(): JSX.Element {
       toast.error(error);
     }
   };
-  const start = async (): Promise<void> => {
-    const isConfirmed = await dialogs.confirm({
-      title: t('vsc.settings.startConfirmTitle'),
-      message: t('vsc.settings.startConfirmMessage'),
-      confirmLabel: t('buttons.start'),
-      danger: true,
-    });
-    if (isConfirmed) {
-      await attempt(() => rpc.call('native.startClaude', { confirmed: true }));
-    }
-  };
+  const start = useStartClaude();
   return (
     <Toolbar align="start">
       <Button variant="primary" icon="play" label={t('vsc.settings.startClaude')} onClick={start} />
-      <Button icon="debug-continue" label={t('vsc.settings.resumeClaude')} onClick={() => attempt(() => rpc.call('native.resumeClaude', {}))} />
+      <Button icon="debug-continue" label={t('buttons.resume')} onClick={() => attempt(() => rpc.call('native.resumeClaude', {}))} />
       <Button icon="folder-opened" label={t('vsc.settings.openWorktree')} onClick={() => attempt(() => rpc.call('native.openWorktree', {}))} />
       <Button
         icon="copy"
@@ -68,14 +58,14 @@ function ContextForm({ data }: { readonly data: WorkspaceContext }): JSX.Element
     <div class="gw-set-form">
       <div class="gw-set-grid">
         <Field label={t('labels.ticketId')}>
-          <TextField value={draft.ticket_id} onInput={() => undefined} disabled />
+          <TextField value={draft.ticket_id} onInput={() => undefined} disabled ariaLabel={t('labels.ticketId')} />
         </Field>
         <Field label={t('labels.ticketName')}>
-          <TextField value={draft.ticket_name} onInput={(value) => setDraft({ ...draft, ticket_name: value })} placeholder={t('placeholders.enterTicketName')} />
+          <TextField value={draft.ticket_name} ariaLabel={t('labels.ticketName')} onInput={(value) => setDraft({ ...draft, ticket_name: value })} placeholder={t('placeholders.enterTicketName')} />
         </Field>
       </div>
       <Field label={t('labels.context')}>
-        <TextField multiline rows={CONTEXT_ROWS} value={draft.context} onInput={(value) => setDraft({ ...draft, context: value })} placeholder={t('placeholders.describeTask')} />
+        <TextField multiline rows={CONTEXT_ROWS} value={draft.context} ariaLabel={t('labels.context')} onInput={(value) => setDraft({ ...draft, context: value })} placeholder={t('placeholders.describeTask')} />
       </Field>
       <Field label={t('labels.fileDirectoryReferences')}>
         <ChipInput
@@ -115,7 +105,7 @@ function TaskSection({ active }: { readonly active: boolean }): JSX.Element {
       <SubSection title={t('labels.claude')}>
         <ClaudeActions />
       </SubSection>
-      <SubSection title={t('cards.taskContext')}>
+      <SubSection saveMode="form">
         <ResourceView resource={context}>
           {(data) => (
             <>

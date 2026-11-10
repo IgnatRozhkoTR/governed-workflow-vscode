@@ -1,13 +1,16 @@
 import type { JSX } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { startReviewPipeline, getReviewPipelineStatus, type AgentState, type ReviewPipelineStatus } from '../../api/phaseControl';
-import { Badge, Button, Card, CodeRef, EmptyState, Icon, ResourceView, useDialogs } from '../../components';
+import { Badge, Button, Card, CodeRef, Icon, ResourceView, useDialogs } from '../../components';
 import { toasts } from '../../components/ToastHost';
 import { classNames } from '../../components/types';
 import { useT } from '../../i18n/i18n';
 import { RpcError } from '../../rpc/rpcClient';
-import { useMutation, useResource, useWorkspaceState } from '../../store/hooks';
-import { agentIcon, canStartPipeline, elapsedSeconds, filesProgress, isPipelineActive, POLL_INTERVAL_MS, REVIEW_START_PHASE, stateTone } from './pipelineModel';
+import { useMutation, useResource, useStore, useWorkspaceState } from '../../store/hooks';
+import { EmptySectionLine } from './EmptySectionLine';
+import { agentIcon, canStartPipeline, elapsedSeconds, filesProgress, isBeforeReviewStart, isPipelineActive, POLL_INTERVAL_MS, REVIEW_START_PHASE, stateTone } from './pipelineModel';
+
+const NO_PHASES: readonly string[] = [];
 
 interface PipelineView {
   readonly status?: ReviewPipelineStatus;
@@ -118,6 +121,12 @@ function useStartPipeline(workspaceId: number, phase: string): () => Promise<voi
   };
 }
 
+function useNotRunText(phase: string): string {
+  const t = useT();
+  const sequence = useStore((s) => s.state?.phase_sequence ?? NO_PHASES);
+  return isBeforeReviewStart(sequence, phase) ? t('vsc.phase.pipelineRunsAt', { phase: REVIEW_START_PHASE }) : t('vsc.phase.pipelineNotRun');
+}
+
 export function ReviewPipelineCard({ active }: { readonly active: boolean }): JSX.Element {
   const t = useT();
   const { workspace_id: workspaceId, phase } = useWorkspaceState();
@@ -132,11 +141,15 @@ export function ReviewPipelineCard({ active }: { readonly active: boolean }): JS
     return () => clearInterval(timer);
   }, [active, isRunning, pipeline.reload]);
   const canStart = canStartPipeline(pipeline.data?.status);
+  const notRunText = useNotRunText(phase);
   const runButton = <Button size="sm" icon="play" label={t('reviewPipeline.runButton')} disabled={!canStart} onClick={startPipeline} />;
+  if (pipeline.data !== undefined && pipeline.data.status === undefined) {
+    return <EmptySectionLine id="review-pipeline" text={notRunText} action={runButton} />;
+  }
   return (
     <Card id="review-pipeline" title={t('cards.reviewPipeline')} actions={runButton}>
       <ResourceView resource={pipeline}>
-        {(view) => (view.status === undefined ? <EmptyState icon="info" message={t('reviewPipeline.empty')} /> : <StatusBody status={view.status} />)}
+        {(view) => (view.status === undefined ? null : <StatusBody status={view.status} />)}
       </ResourceView>
     </Card>
   );

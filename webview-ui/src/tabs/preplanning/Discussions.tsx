@@ -10,17 +10,28 @@ import { EmptyState } from '../../components/EmptyState';
 import { Select } from '../../components/Select';
 import { TextField } from '../../components/TextField';
 import { Toggle } from '../../components/Toggle';
+import { classNames } from '../../components/types';
+import { useAnchorTarget } from '../../components/useAnchor';
 import { useT } from '../../i18n/i18n';
+import { capitalizeFirstLetter } from '../../lib/format';
 import { useMutation, useNav, usePersistentState } from '../../store/hooks';
-import type { NavTarget } from '@shared/navigation';
-import { countOpenDiscussions, isDiscussionDone, isResearchDiscussion, provenDiscussionIds, visibleDiscussions } from './discussionLogic';
+import {
+  countOpenDiscussions,
+  countPendingResearchDiscussions,
+  discussionTitle,
+  distinctDiscussionTitle,
+  isDiscussionDone,
+  isResearchDiscussion,
+  provenDiscussionIds,
+  visibleDiscussions,
+} from './discussionLogic';
 
 export interface DiscussionsProps {
   readonly discussions: readonly Discussion[];
   readonly research: readonly ResearchEntry[];
-  readonly nav: NavTarget;
 }
 
+const DISCUSSIONS_ANCHOR = 'preplanning-discussions';
 const AFTER_CREATE = { invalidates: ['context'], refreshState: true } as const;
 
 function AuthorBadge({ author }: { readonly author: string }): JSX.Element {
@@ -32,19 +43,20 @@ function AuthorBadge({ author }: { readonly author: string }): JSX.Element {
 function DiscussionBadges({ discussion, isDone }: { readonly discussion: Discussion; readonly isDone: boolean }): JSX.Element {
   const t = useT();
   const isResearch = isResearchDiscussion(discussion);
-  const statusLabel = isResearch ? (isDone ? t('badges.verified') : t('badges.pending')) : isDone ? t('badges.resolved') : t('badges.open');
+  const statusKey = isResearch ? (isDone ? 'badges.verified' : 'badges.pending') : isDone ? 'badges.resolved' : 'badges.open';
   return (
     <>
       <AuthorBadge author={discussion.author || 'user'} />
-      <Badge label={isResearch ? t('badges.research') : t('discussionType.general')} tone={isResearch ? 'warning' : 'info'} />
-      <Badge label={statusLabel} tone={isDone ? 'success' : 'warning'} />
+      <Badge label={capitalizeFirstLetter(t(isResearch ? 'badges.research' : 'discussionType.general'))} tone={isResearch ? 'warning' : 'info'} />
+      <Badge label={capitalizeFirstLetter(t(statusKey))} tone={isDone ? 'success' : 'warning'} />
     </>
   );
 }
 
-function DiscussionCard({ discussion, research, isDone, isAnchored }: { readonly discussion: Discussion; readonly research: ResearchEntry | undefined; readonly isDone: boolean; readonly isAnchored: boolean }): JSX.Element {
+function DiscussionCard({ discussion, research, isDone }: { readonly discussion: Discussion; readonly research: ResearchEntry | undefined; readonly isDone: boolean }): JSX.Element {
   const t = useT();
   const [, navigate] = useNav();
+  const title = distinctDiscussionTitle(discussion);
   const linked = research === undefined ? undefined : (
     <button type="button" class="gw-link" title={t('research.viewLinked')} onClick={() => navigate({ tab: 'research', anchor: `research-${research.id}` })}>
       {research.topic || t('research.untitledResearch')}
@@ -52,14 +64,15 @@ function DiscussionCard({ discussion, research, isDone, isAnchored }: { readonly
   );
   return (
     <Card
-      key={`${discussion.id}-${isAnchored}`}
       id={`discussion-${discussion.id}`}
-      title={`#${discussion.id}`}
+      title={title ?? t('vsc.preplanning.discussionUntitled')}
+      badge={<DiscussionBadges discussion={discussion} isDone={isDone} />}
       subtitle={linked}
+      collapsedPreview={title === undefined ? discussionTitle(discussion) : undefined}
       collapsible
-      defaultCollapsed={isDone && !isAnchored}
+      defaultCollapsed={isDone}
     >
-      <DiscussionThread discussion={discussion} badges={<DiscussionBadges discussion={discussion} isDone={isDone} />} />
+      <DiscussionThread discussion={discussion} />
     </Card>
   );
 }
@@ -81,27 +94,32 @@ function NewDiscussionForm(): JSX.Element {
   ];
   return (
     <div class="gw-pp-new-discussion">
-      <Select value={type} options={options} onChange={setType} />
+      <Select value={type} options={options} onChange={setType} ariaLabel={t('vsc.preplanning.discussionType')} />
       <TextField value={text} onInput={setText} placeholder={t('placeholders.raiseDiscussion')} onSubmit={() => void submit()} />
       <Button variant="primary" icon="add" label={t('vsc.preplanning.addDiscussion')} busy={create.pending} disabled={text.trim() === ''} onClick={submit} />
     </div>
   );
 }
 
-export function Discussions({ discussions, research, nav }: DiscussionsProps): JSX.Element {
+export function Discussions({ discussions, research }: DiscussionsProps): JSX.Element {
   const t = useT();
   const [showResolved, setShowResolved] = usePersistentState('pp.showResolved', false);
   const [showProven, setShowProven] = usePersistentState('pp.showProven', false);
   const provenIds = provenDiscussionIds(research);
   const visible = visibleDiscussions(discussions, provenIds, { showResolved, showProven });
-  const openCount = countOpenDiscussions(discussions);
+  const visibleOpenCount = countOpenDiscussions(visible, provenIds);
+  const hiddenCount = discussions.length - visible.length;
+  const pendingResearch = countPendingResearchDiscussions(discussions, provenIds);
   const researchByDiscussion = new Map<number, ResearchEntry>();
   research.forEach((entry) => entry.discussion_id !== null && researchByDiscussion.set(entry.discussion_id, entry));
+  const [ref, isHighlighted] = useAnchorTarget<HTMLElement>(DISCUSSIONS_ANCHOR);
   return (
-    <section class="gw-pp-group">
+    <section id={DISCUSSIONS_ANCHOR} ref={ref} class={classNames('gw-pp-group gw-anchor-target', isHighlighted && 'gw-card-highlight')}>
       <div class="gw-pp-heading-row">
         <h2 class="gw-pp-heading">{t('preplanning.discussions')}</h2>
-        <Badge label={String(openCount > 0 ? openCount : discussions.length)} tone={openCount > 0 ? 'warning' : 'success'} />
+        {visible.length > 0 && <Badge label={String(visibleOpenCount > 0 ? visibleOpenCount : visible.length)} tone={visibleOpenCount > 0 ? 'warning' : 'success'} />}
+        {hiddenCount > 0 && <Badge label={t('vsc.preplanning.hiddenCount', { count: hiddenCount })} tone="neutral" />}
+        {pendingResearch > 0 && <Badge label={t('badges.researchCount', { count: pendingResearch })} tone="warning" />}
         <div class="gw-pp-toggles">
           <Toggle checked={showResolved} onChange={setShowResolved} label={t(showResolved ? 'discussions.hideResolved' : 'discussions.showResolved')} />
           <Toggle checked={showProven} onChange={setShowProven} label={t(showProven ? 'discussions.hideProven' : 'discussions.showProven')} />
@@ -115,7 +133,6 @@ export function Discussions({ discussions, research, nav }: DiscussionsProps): J
           discussion={discussion}
           research={researchByDiscussion.get(discussion.id)}
           isDone={isDiscussionDone(discussion, provenIds)}
-          isAnchored={nav.anchor === `discussion-${discussion.id}`}
         />
       ))}
       <NewDiscussionForm />

@@ -9,7 +9,7 @@ export { Commentable, type CommentableProps } from './Commentable';
 export { CommentIcon, type CommentIconProps } from './CommentIcon';
 export { CommentThread, type CommentThreadProps } from './CommentThread';
 export { Dialog, type DialogProps } from './Dialog';
-export { DialogHost, useDialogs, type AlertOptions, type ConfirmOptions, type DialogsApi, type PromptOptions } from './DialogHost';
+export { DialogHost, useDialogs, type AlertOptions, type ConfirmOptions, type DialogNotice, type DialogsApi, type PromptOptions } from './DialogHost';
 export { DiscussionThread, type DiscussionThreadProps } from './DiscussionThread';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { ErrorBanner, type ErrorBannerProps } from './ErrorBanner';

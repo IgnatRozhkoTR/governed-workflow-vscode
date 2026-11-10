@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PipelineFileResult, ReviewPipelineStatus } from '../../../webview-ui/src/api/phaseControl';
-import { canStartPipeline, elapsedSeconds, filesProgress, isPipelineActive } from '../../../webview-ui/src/tabs/phase/pipelineModel';
+import { canStartPipeline, elapsedSeconds, filesProgress, isBeforeReviewStart, isPipelineActive } from '../../../webview-ui/src/tabs/phase/pipelineModel';
 
 function statusIn(state: ReviewPipelineStatus['state']): ReviewPipelineStatus {
   return { state } as ReviewPipelineStatus;
@@ -45,5 +45,23 @@ describe('pipelineModel', () => {
     const files = { a: file('done'), b: file('failed'), c: file('running'), d: file('pending') };
 
     expect(filesProgress(files)).toEqual({ done: 2, total: 4 });
+  });
+});
+
+describe('isBeforeReviewStart', () => {
+  const SEQUENCE = ['2.0', '3.1.0', '4.0', '4.1', '4.2'];
+
+  it('isBeforeReviewStart_shouldBeTrue_whenPhaseComesBeforeReviewStart', () => {
+    expect(isBeforeReviewStart(SEQUENCE, '3.1.0')).toBe(true);
+  });
+
+  it('isBeforeReviewStart_shouldBeFalse_whenPhaseIsAtOrPastReviewStart', () => {
+    expect(isBeforeReviewStart(SEQUENCE, '4.0')).toBe(false);
+    expect(isBeforeReviewStart(SEQUENCE, '4.2')).toBe(false);
+  });
+
+  it('isBeforeReviewStart_shouldBeFalse_whenEitherPhaseIsMissingFromSequence', () => {
+    expect(isBeforeReviewStart(SEQUENCE, '9.9')).toBe(false);
+    expect(isBeforeReviewStart(['2.0', '3.1.0'], '2.0')).toBe(false);
   });
 });

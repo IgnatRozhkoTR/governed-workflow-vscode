@@ -197,7 +197,10 @@ describe('threadSignature', () => {
 describe('authorLabel', () => {
   it('should capitalise the first word and split on dashes like the web fallback', () => {
     expect(authorLabel('correctness-reviewer')).toBe('Correctness reviewer');
-    expect(authorLabel('user')).toBe('User');
+  });
+
+  it('authorLabel_shouldReturnYou_whenAuthorIsTheUser', () => {
+    expect(authorLabel('user')).toBe('You');
   });
 });
 

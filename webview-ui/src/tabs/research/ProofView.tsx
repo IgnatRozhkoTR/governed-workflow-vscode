@@ -26,9 +26,21 @@ function RemoteQuote({ proof, start, end }: { readonly proof: CodeProof; readonl
   const snippet = useResource('diff', `quote:${proof.file}:${start}:${end}`, () => getFileSnippet(proof.file, start, end, absolute), { refetchOnState: false });
   return (
     <ResourceView resource={snippet}>
-      {(data) => <CodeBlock code={data.lines.join('\n')} language={guessLanguage(proof.file)} startLine={data.start ?? start} maxHeight={QUOTE_MAX_HEIGHT} />}
+      {(data) => (
+        <CodeBlock
+          code={data.lines.join('\n')}
+          language={guessLanguage(proof.file)}
+          startLine={data.start ?? start}
+          highlight={proofHighlight(proof)}
+          maxHeight={QUOTE_MAX_HEIGHT}
+        />
+      )}
     </ResourceView>
   );
+}
+
+function proofHighlight(proof: CodeProof): readonly [number, number] | undefined {
+  return proof.lineStart === undefined ? undefined : [proof.lineStart, proof.lineEnd ?? proof.lineStart];
 }
 
 function QuoteToggle({ proof }: { readonly proof: CodeProof }): JSX.Element | null {

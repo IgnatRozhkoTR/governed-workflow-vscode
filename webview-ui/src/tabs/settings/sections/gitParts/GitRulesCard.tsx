@@ -15,7 +15,7 @@ export function GitRulesCard({ active }: { readonly active: boolean }): JSX.Elem
   const t = useT();
   const rules = useResource('git', 'git-rules', getGitRules, { active, refetchOnState: false });
   return (
-    <Card title={t('cards.gitRules')} subtitle={t('gitCockpit.rules.shadowNote')}>
+    <Card id="git-rules" title={t('cards.gitRules')} subtitle={t('gitCockpit.rules.shadowNote')}>
       <ResourceView resource={rules}>{(data) => <GitRulesForm initial={data} />}</ResourceView>
     </Card>
   );

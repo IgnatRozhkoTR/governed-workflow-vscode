@@ -3,6 +3,8 @@
   --gw-fg: var(--vscode-foreground);
   --gw-muted: var(--vscode-descriptionForeground);
   --gw-border: var(--vscode-panel-border);
+  --gw-separator: var(--gw-border);
+  --gw-row-gap: 8px;
   --gw-card: var(--vscode-sideBar-background);
   --gw-accent: var(--vscode-focusBorder);
   --gw-btn-bg: var(--vscode-button-background);
@@ -24,12 +26,26 @@
   --gw-font-size: var(--vscode-font-size);
   --gw-mono-size: var(--vscode-editor-font-size);
   --gw-hover: var(--vscode-list-hoverBackground);
-  --gw-highlight: var(--vscode-editor-findMatchHighlightBackground);
+  --gw-highlight: var(--vscode-editor-findMatchHighlightBackground, var(--vscode-list-hoverBackground));
   --gw-line-highlight: var(--vscode-editor-lineHighlightBackground, var(--vscode-list-hoverBackground));
   --gw-shadow: var(--vscode-widget-shadow);
   --gw-overlay: var(--vscode-editorWidget-background);
   --gw-link: var(--vscode-textLink-foreground);
   --gw-link-active: var(--vscode-textLink-activeForeground);
+  /* One content column for the header, tab strip, decision bar and tab panels, so their left edges line up on wide panels. */
+  --gw-column-width: 1280px;
+  --gw-column-gutter: 16px;
+  /* Resolved against the full-width element that uses it: the gutter on narrow panels, the column's edge on wide ones. */
+  --gw-column-inset: max(var(--gw-column-gutter), calc((100% - var(--gw-column-width)) / 2 + var(--gw-column-gutter)));
+}
+
+/* HC themes only guarantee AA for the foreground, and some status colours fall short (HC-light info is 3.6:1, danger 3.35:1), so status and danger text use the foreground there and the hue stays on borders and icons. */
+body.vscode-high-contrast,
+body.vscode-high-contrast-light {
+  --gw-status-text: var(--gw-fg);
+  --gw-danger-text: var(--gw-fg);
+  --gw-separator: color-mix(in srgb, var(--gw-border) 40%, transparent);
+  --gw-row-gap: 14px;
 }
 
 * {
@@ -82,8 +98,10 @@ kbd {
 }
 
 .gw-tab-panels {
-  flex: 1;
-  padding: 12px 16px 32px;
+  width: 100%;
+  max-width: var(--gw-column-width);
+  margin: 0 auto;
+  padding: 12px var(--gw-column-gutter) 32px;
   min-width: 0;
 }
 
@@ -95,6 +113,9 @@ kbd {
   gap: 8px 16px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--gw-border);
+}
+
+.gw-sticky-top {
   position: sticky;
   top: 0;
   z-index: 10;
@@ -121,11 +142,15 @@ kbd {
   margin-right: 4px;
 }
 
-.gw-tab-bar {
+.gw-tabs.gw-tab-bar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
   padding: 0 12px;
-  position: sticky;
-  top: 0;
-  background: var(--gw-bg);
+}
+
+.gw-tab-bar .gw-tab {
+  flex: none;
 }
 
 .gw-connection-banner {

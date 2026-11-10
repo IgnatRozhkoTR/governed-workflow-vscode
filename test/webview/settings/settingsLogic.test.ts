@@ -6,7 +6,6 @@ import {
   parsePathLines,
   setPendingAdvanceMode,
   setPendingPhase,
-  sameSet,
   toggleModule,
   validateAdvanceModes,
   validateRuleDraft,
@@ -94,10 +93,5 @@ describe('helpers', () => {
     expect(toggleModule(['a'], 'b', true)).toEqual(['a', 'b']);
     expect(toggleModule(['a', 'b'], 'a', false)).toEqual(['b']);
     expect(toggleModule(['a'], 'a', true)).toEqual(['a']);
-  });
-
-  it('sameSet_shouldIgnoreOrder', () => {
-    expect(sameSet(['a', 'b'], ['b', 'a'])).toBe(true);
-    expect(sameSet(['a'], ['a', 'b'])).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import type { ModuleMessages } from '../../../types';
 export const GIT_MESSAGES: ModuleMessages = {
   en: {
     'vsc.git.openPr': 'Open pull request',
+    'vsc.git.prRepository': 'Repository',
     'vsc.git.attachedOn': 'Attached on {branch}',
     'vsc.git.noPrs': 'No pull requests saved yet.',
     'vsc.git.saved': 'Saved',
@@ -11,6 +12,7 @@ export const GIT_MESSAGES: ModuleMessages = {
   },
   ru: {
     'vsc.git.openPr': 'Открыть pull request',
+    'vsc.git.prRepository': 'Репозиторий',
     'vsc.git.attachedOn': 'Подключён на {branch}',
     'vsc.git.noPrs': 'Сохранённых pull request пока нет.',
     'vsc.git.saved': 'Сохранено',

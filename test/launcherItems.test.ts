@@ -85,12 +85,12 @@ describe('mapStateToLauncher', () => {
     expect(itemById(mapStateToLauncher(makeState({ research: [{ ...entry, id: 1 }] })), 'research').description).toBe('1');
   });
 
-  it('mapStateToLauncher_shouldCountOnlyOpenReviewScopedThreads', () => {
+  it('mapStateToLauncher_shouldCountReviewThreadsWithTheApproveGuardRule', () => {
     const state = makeState({
       comments: {
-        'review:a.ts': [makeComment({ id: 1 }), makeComment({ id: 2, resolved: true })],
-        'review:b.ts': [makeComment({ id: 3 })],
-        'plan:Entire plan': [makeComment({ id: 4 })],
+        'review:a.ts': [makeComment({ id: 1, resolution: 'open' }), makeComment({ id: 2, resolved: true, resolution: 'fixed' })],
+        'review:b.ts': [makeComment({ id: 3, resolved: true, resolution: 'open' }), makeComment({ id: 5, resolution: 'false_positive' })],
+        'plan:Entire plan': [makeComment({ id: 4, resolution: 'open' })],
       },
     });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ProjectRepo, RepoCandidate } from '../../../webview-ui/src/api/git';
-import { baseSyncNotice, buildConvertRows, selectionFrom, shortenUrl } from '../../../webview-ui/src/tabs/settings/sections/gitParts/gitLogic';
+import { shortenUrl } from '../../../webview-ui/src/lib/format';
+import { baseSyncNotice, buildConvertRows, selectionFrom } from '../../../webview-ui/src/tabs/settings/sections/gitParts/gitLogic';
 
 const CANDIDATES: RepoCandidate[] = [
   { rel_path: 'api', name: 'api', current_branch: 'main' },

@@ -40,7 +40,7 @@ The extension prefers the workspace side (`extensionKind: workspace, ui`) and fa
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `governedWorkflow.serverUrl` | `http://localhost:5111` | Base URL of the admin panel. |
-| `governedWorkflow.pollIntervalSeconds` | `10` | State polling interval while the window is focused. Minimum 3. |
+| `governedWorkflow.pollIntervalSeconds` | `10` | State polling interval while the window is focused and the Workspace Control panel is not visible. While the panel is visible and the window focused, the state is polled every 3 seconds (cheap ETag/304 requests). Minimum 3. |
 | `governedWorkflow.terminal.maximize` | `true` | Maximize the editor area when the Claude terminal opens. |
 
 ## Token setup
@@ -63,7 +63,7 @@ GW_TOKEN=<token> GW_PROJECT=<project id> GW_BRANCH=<branch> npm run harness
 # open http://localhost:5199/  (or /?project=<id>&branch=<branch>)
 ```
 
-Optional: `GW_SERVER_URL` (default `http://localhost:5111`), `GW_HARNESS_PORT` (default `5199`). Rebuild the panel with `npm run build` and reload the page; restart the harness after host-code changes.
+Optional: `GW_SERVER_URL` (default `http://localhost:5111`), `GW_HARNESS_PORT` (default `5199`), `GW_HARNESS_HOST` (bind address, default `127.0.0.1`; use `0.0.0.0` to open the harness on the LAN, where anyone who reaches it can use the token), `GW_TOKEN_FILE` (read the token from a file instead of `GW_TOKEN`; the value is never logged). Rebuild the panel with `npm run build` and reload the page; restart the harness after host-code changes.
 
 The panel stores only a SHA-256 hash of the admin token, so an existing token cannot be read back. Reuse the token already pasted into VS Code, or create one with `python3 admin-panel/backend/app.py auth-token`. That command refuses to run when a token exists; `--force` rotates it and disconnects every client that uses the old one, including VS Code.
 

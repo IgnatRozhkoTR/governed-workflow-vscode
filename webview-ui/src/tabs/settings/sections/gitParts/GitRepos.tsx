@@ -20,13 +20,13 @@ export function GitRepos({ active }: { readonly active: boolean }): JSX.Element 
 
   if (!isMulti) {
     return (
-      <Card title={t('gitCockpit.repos.title')} actions={<Button size="sm" variant="secondary" icon="repo-forked" label={t('gitCockpit.repos.convertBtn')} onClick={() => openConvert('convert')} />}>
+      <Card id="git-repos-convert" title={t('gitCockpit.repos.title')} actions={<Button size="sm" variant="secondary" icon="repo-forked" label={t('gitCockpit.repos.convertBtn')} onClick={() => openConvert('convert')} />}>
         {panel}
       </Card>
     );
   }
   return (
-    <Card title={t('gitCockpit.repos.title')} actions={<Button size="sm" variant="secondary" icon="edit" label={t('gitCockpit.repos.editSelectionBtn')} onClick={() => openConvert('edit')} />}>
+    <Card id="git-repos-edit" title={t('gitCockpit.repos.title')} actions={<Button size="sm" variant="secondary" icon="edit" label={t('gitCockpit.repos.editSelectionBtn')} onClick={() => openConvert('edit')} />}>
       <ResourceView resource={repos} empty={(data) => data.repos.length === 0} emptyMessage={t('gitCockpit.repos.noRepos')}>
         {(data) => (
           <div class="gw-git-list">

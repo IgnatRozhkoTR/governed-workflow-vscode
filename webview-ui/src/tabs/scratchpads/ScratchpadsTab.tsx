@@ -3,17 +3,20 @@ import type { JSX } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { listScratchpads, readScratchpad, writeScratchpad } from '../../api/scratchpads';
 import { listRepos } from '../../api/changes';
-import { Badge, Button, EmptyState, Markdown, ResourceView, Select, Spinner, Tabs, TextField, TimeAgo, useDialogs, useToast } from '../../components';
+import { Badge, Button, EmptyState, Markdown, ResourceView, Spinner, Tabs, TextField, TimeAgo, useDialogs, useToast } from '../../components';
+import type { DialogsApi } from '../../components/DialogHost';
+import { classNames } from '../../components/types';
 import { useT } from '../../i18n/i18n';
 import { rpc } from '../../rpc/rpcClient';
 import { useMutation, usePersistentState, useResource, useWorkspaceState } from '../../store/hooks';
 import type { TabProps } from '../types';
+import { findFile, hasNoFiles, isSameSelection, resolveSelection, ROOT_REPO, type ScratchpadSection, type ScratchpadSelection } from './scratchpadSections';
 
 type ViewMode = 'preview' | 'source';
 
-const ROOT_REPO = '';
 const UNSAFE_FILENAME_CHARS = /[/\\:*?"<>|\x00-\x1f]/g;
 const MARKDOWN_EXTENSION = /\.md$/i;
+const NO_SELECTION: ScratchpadSelection = { repo: ROOT_REPO, name: '' };
 
 function downloadFilename(name: string, title: string | undefined): string {
   const sanitized = (title ?? '').replace(UNSAFE_FILENAME_CHARS, ' ').replace(/\s+/g, ' ').trim();
@@ -23,71 +26,95 @@ function downloadFilename(name: string, title: string | undefined): string {
   return MARKDOWN_EXTENSION.test(sanitized) ? sanitized : `${sanitized}.md`;
 }
 
+async function loadSections(isMulti: boolean): Promise<ScratchpadSection[]> {
+  const root = listScratchpads().then((list) => ({ repo: ROOT_REPO, label: '', files: list.files }));
+  if (!isMulti) {
+    return [await root];
+  }
+  const { repos } = await listRepos();
+  const repoSections = repos.map(async (entry) => ({ repo: entry.path, label: entry.name, files: (await listScratchpads(entry.path)).files }));
+  return Promise.all([root, ...repoSections]);
+}
+
+interface FileListProps {
+  readonly sections: readonly ScratchpadSection[];
+  readonly showHeaders: boolean;
+  readonly selected: ScratchpadSelection | undefined;
+  readonly onSelect: (selection: ScratchpadSelection) => void;
+}
+
+function ScratchpadFileList({ sections, showHeaders, selected, onSelect }: FileListProps): JSX.Element {
+  const t = useT();
+  return (
+    <nav class="gw-scratchpads-files" aria-label={t('scratchpads.title')}>
+      {sections.map((section) => (
+        <div key={section.repo} class="gw-scratchpads-section">
+          {showHeaders && <div class="gw-scratchpads-section-header">{section.repo === ROOT_REPO ? t('scratchpads.rootLabel') : section.label}</div>}
+          {section.files.length === 0 && showHeaders && <div class="gw-muted gw-scratchpads-section-empty">{t('scratchpads.empty')}</div>}
+          {section.files.map((file) => {
+            const selection = { repo: section.repo, name: file.name };
+            const isActive = selected !== undefined && isSameSelection(selected, selection);
+            return (
+              <button type="button" key={file.name} class={`gw-scratchpads-file${isActive ? ' gw-scratchpads-file-active' : ''}`} title={file.name} onClick={() => onSelect(selection)}>
+                <span class="gw-scratchpads-file-title">{file.title || file.name}</span>
+                <span class="gw-muted gw-scratchpads-file-meta"><TimeAgo iso={file.updated_at} /></span>
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
 export function ScratchpadsTab({ active }: TabProps): JSX.Element {
   const t = useT();
   const dialogs = useDialogs();
   const isMulti = useWorkspaceState().project_type === 'multi';
-  const [repo, setRepo] = usePersistentState('scratchpads.repo', ROOT_REPO);
-  const [name, setName] = usePersistentState<string>('scratchpads.name', '');
+  const [stored, setStored] = usePersistentState<ScratchpadSelection>('scratchpads.selection', NO_SELECTION);
   const [isDirty, setDirty] = useState(false);
+  const sections = useResource('scratchpads', `sections|${isMulti}`, () => loadSections(isMulti), { active });
+  const loaded = sections.data ?? [];
+  const selected = resolveSelection(loaded, stored);
+  const isEmpty = sections.data !== undefined && hasNoFiles(loaded);
 
-  const repos = useResource('scratchpads', 'repos', listRepos, { active: active && isMulti, refetchOnState: false });
-  const repoOptions = [{ value: ROOT_REPO, label: t('scratchpads.rootLabel') }, ...(repos.data?.repos ?? []).map((entry) => ({ value: entry.path, label: entry.name }))];
-  const activeRepo = repoOptions.some((option) => option.value === repo) ? repo : ROOT_REPO;
-  const files = useResource('scratchpads', `list|${activeRepo}`, () => listScratchpads(activeRepo === ROOT_REPO ? undefined : activeRepo), { active });
-  const selectedTitle = files.data?.files.find((file) => file.name === name)?.title;
-
-  const confirmLeave = async (): Promise<boolean> =>
-    !isDirty ||
-    dialogs.confirm({ title: t('vsc.scratchpads.unsavedTitle'), message: t('vsc.scratchpads.unsavedMessage'), confirmLabel: t('vsc.scratchpads.discard'), danger: true });
-  const selectRepo = async (next: string): Promise<void> => {
-    if (await confirmLeave()) {
+  const selectFile = async (next: ScratchpadSelection): Promise<void> => {
+    const isChange = selected === undefined || !isSameSelection(selected, next);
+    if (isChange && (!isDirty || (await confirmDiscard(dialogs, t)))) {
       setDirty(false);
-      setRepo(next);
-      setName('');
-    }
-  };
-  const selectFile = async (next: string): Promise<void> => {
-    if (next !== name && (await confirmLeave())) {
-      setDirty(false);
-      setName(next);
+      setStored(next);
     }
   };
 
   return (
-    <div class="gw-scratchpads">
+    <div class={classNames('gw-scratchpads', isEmpty && 'gw-scratchpads--empty')}>
       <aside class="gw-scratchpads-list">
-        {isMulti && repoOptions.length > 1 && (
-          <Select value={activeRepo} options={repoOptions} onChange={(value) => void selectRepo(value)} />
-        )}
-        <ResourceView resource={files} empty={(data) => data.files.length === 0} emptyMessage={t('scratchpads.empty')}>
-          {(data) => (
-            <nav class="gw-scratchpads-files" aria-label={t('scratchpads.title')}>
-              {data.files.map((file) => (
-                <button
-                  type="button"
-                  key={file.name}
-                  class={`gw-scratchpads-file${file.name === name ? ' gw-scratchpads-file-active' : ''}`}
-                  title={file.name}
-                  onClick={() => void selectFile(file.name)}
-                >
-                  <span class="gw-scratchpads-file-title">{file.title || file.name}</span>
-                  <span class="gw-muted gw-scratchpads-file-meta"><TimeAgo iso={file.updated_at} /></span>
-                </button>
-              ))}
-            </nav>
-          )}
+        <ResourceView resource={sections} empty={hasNoFiles} emptyMessage={t('scratchpads.empty')}>
+          {(data) => <ScratchpadFileList sections={data} showHeaders={isMulti} selected={selected} onSelect={(next) => void selectFile(next)} />}
         </ResourceView>
       </aside>
-      <section class="gw-scratchpads-content">
-        {name === '' ? (
-          <EmptyState icon="notebook" message={t('scratchpads.selectFile')} />
-        ) : (
-          <ScratchpadEditor key={`${activeRepo}|${name}`} name={name} title={selectedTitle} repo={activeRepo} active={active} onDirtyChange={setDirty} />
-        )}
-      </section>
+      {!isEmpty && (
+        <section class="gw-scratchpads-content">
+          {selected === undefined ? (
+            <EmptyState icon="notebook" message={t('scratchpads.selectFile')} />
+          ) : (
+            <ScratchpadEditor
+              key={`${selected.repo}|${selected.name}`}
+              name={selected.name}
+              title={findFile(loaded, selected)?.title}
+              repo={selected.repo}
+              active={active}
+              onDirtyChange={setDirty}
+            />
+          )}
+        </section>
+      )}
     </div>
   );
+}
+
+function confirmDiscard(dialogs: DialogsApi, t: ReturnType<typeof useT>): Promise<boolean> {
+  return dialogs.confirm({ title: t('vsc.scratchpads.unsavedTitle'), message: t('vsc.scratchpads.unsavedMessage'), confirmLabel: t('vsc.scratchpads.discard'), danger: true });
 }
 
 interface EditorProps {

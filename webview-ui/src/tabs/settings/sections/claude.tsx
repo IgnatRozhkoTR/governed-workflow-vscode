@@ -25,10 +25,10 @@ function CommandForm({ saved }: { readonly saved: CommandConfig }): JSX.Element 
         <TextField value={draft.claude_command} placeholder={DEFAULT_COMMAND} onInput={(claude_command) => edit({ claude_command })} />
       </Field>
       <SettingRow label={t('config.skipPermissions')} description={draft.skip_permissions ? t('vsc.settings.skipPermissionsWarning') : undefined}>
-        <Toggle checked={draft.skip_permissions} onChange={(skip_permissions) => edit({ skip_permissions })} />
+        <Toggle checked={draft.skip_permissions} ariaLabel={t('config.skipPermissions')} onChange={(skip_permissions) => edit({ skip_permissions })} />
       </SettingRow>
       <SettingRow label={t('config.restrictToWorkspace')}>
-        <Toggle checked={draft.restrict_to_workspace} onChange={(restrict_to_workspace) => edit({ restrict_to_workspace })} />
+        <Toggle checked={draft.restrict_to_workspace} ariaLabel={t('config.restrictToWorkspace')} onChange={(restrict_to_workspace) => edit({ restrict_to_workspace })} />
       </SettingRow>
       <Field label={t('config.externalPaths')}>
         <TextField value={draft.allowed_external_paths} placeholder="/tmp/, /var/log/" onInput={(allowed_external_paths) => edit({ allowed_external_paths })} />

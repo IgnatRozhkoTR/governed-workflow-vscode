@@ -1,13 +1,14 @@
 import type { RefObject } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 
-export const MIN_ZOOM = 0.4;
+export const MIN_ZOOM = 0.15;
 export const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.1;
 
 export interface ZoomPan {
   readonly scale: number;
   setScale(scale: number): void;
+  setRestScale(scale: number): void;
   zoomIn(): void;
   zoomOut(): void;
   reset(): void;
@@ -72,6 +73,7 @@ function useDragPan(viewportRef: RefObject<HTMLElement>): void {
 
 export function useZoomPan(viewportRef: RefObject<HTMLElement>, isZoomable: boolean): ZoomPan {
   const [scale, setRawScale] = useState(1);
+  const restScale = useRef(1);
   const zoomBy = (delta: number): void => setRawScale((current) => clampZoom(current + delta));
   useWheelZoom(viewportRef, isZoomable, zoomBy);
   useDragPan(viewportRef);
@@ -80,6 +82,10 @@ export function useZoomPan(viewportRef: RefObject<HTMLElement>, isZoomable: bool
     setScale: (next) => setRawScale(clampZoom(next)),
     zoomIn: () => zoomBy(ZOOM_STEP),
     zoomOut: () => zoomBy(-ZOOM_STEP),
-    reset: () => setRawScale(1),
+    setRestScale: (next) => {
+      restScale.current = clampZoom(next);
+      setRawScale(restScale.current);
+    },
+    reset: () => setRawScale(restScale.current),
   };
 }

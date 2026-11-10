@@ -8,6 +8,9 @@
   font-size: 0.9em;
 }
 
+.gw-progress-summary-prs { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; }
+.gw-progress-summary-error { color: var(--gw-muted); text-decoration: underline dotted; }
+
 .gw-progress-body { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
 
 .gw-progress-details {

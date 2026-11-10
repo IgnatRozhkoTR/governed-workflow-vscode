@@ -15,8 +15,8 @@ import { Badge, Button, ResourceView, Toggle, Toolbar, useDialogs, useToast } fr
 import { useT } from '../../../i18n/i18n';
 import { useMutation, useResource } from '../../../store/hooks';
 import type { SettingsSectionModule } from '../../types';
-import { SectionShell, SettingRow, SubSection, useDraft, WarningBanners } from './parts';
-import { sameSet, toggleModule } from './settingsLogic';
+import { SectionShell, SettingRow, SubSection, WarningBanners } from './parts';
+import { toggleModule } from './settingsLogic';
 import { SETTINGS_MESSAGES } from './settingsMessages';
 
 const SETTINGS_TOPICS = ['settings'] as const;
@@ -61,7 +61,7 @@ function NetworkModeCard({ info }: { readonly info: NetworkModeInfo }): JSX.Elem
   return (
     <>
       <SettingRow label={t('networkMode.allowAccess')} description={t('networkMode.explain')}>
-        <Toggle checked={info.network_enabled} onChange={change} />
+        <Toggle checked={info.network_enabled} ariaLabel={t('networkMode.allowAccess')} onChange={change} />
       </SettingRow>
       <p class="gw-set-desc">{t('vsc.settings.networkWarning')}</p>
       {info.network_enabled && (
@@ -84,12 +84,10 @@ function NetworkModeCard({ info }: { readonly info: NetworkModeInfo }): JSX.Elem
 
 function ModulesForm({ modules, enabled }: { readonly modules: readonly ModuleInfo[]; readonly enabled: readonly string[] }): JSX.Element {
   const t = useT();
-  const [draft, setDraft] = useDraft(enabled);
   const [warnings, setWarnings] = useState<readonly ConfiguratorWarning[]>([]);
   const save = useMutation(setEnabledModules, { invalidates: SETTINGS_TOPICS, successToast: t('settings.saved') });
-  const isDirty = !sameSet(draft, enabled);
-  const submit = async (): Promise<void> => {
-    const result = await save.run(draft);
+  const toggle = async (moduleId: string, isOn: boolean): Promise<void> => {
+    const result = await save.run(toggleModule(enabled, moduleId, isOn));
     setWarnings(result?.configurator_warnings ?? []);
   };
   return (
@@ -97,12 +95,9 @@ function ModulesForm({ modules, enabled }: { readonly modules: readonly ModuleIn
       <WarningBanners warnings={warnings} />
       {modules.map((module) => (
         <SettingRow key={module.id} label={module.name} description={module.description === '' ? undefined : module.description}>
-          <Toggle checked={draft.includes(module.id)} onChange={(isOn) => setDraft(toggleModule(draft, module.id, isOn))} />
+          <Toggle checked={enabled.includes(module.id)} ariaLabel={module.name} disabled={save.pending} onChange={(isOn) => toggle(module.id, isOn)} />
         </SettingRow>
       ))}
-      <Toolbar align="end">
-        <Button variant="primary" icon="save" label={t('vsc.settings.saveModules')} disabled={!isDirty} busy={save.pending} onClick={submit} />
-      </Toolbar>
     </>
   );
 }
@@ -118,7 +113,7 @@ function SystemSection({ active }: { readonly active: boolean }): JSX.Element {
       <SubSection title={t('networkMode.title')}>
         <ResourceView resource={network}>{(info) => <NetworkModeCard info={info} />}</ResourceView>
       </SubSection>
-      <SubSection title={t('settings.section.system.modulesTitle')}>
+      <SubSection title={t('settings.section.system.modulesTitle')} saveMode="instant">
         <ResourceView resource={modules} empty={(list) => list.length === 0} emptyMessage={t('vsc.settings.noModules')}>
           {(list) => (
             <ResourceView resource={enabled}>{(ids) => <ModulesForm modules={list} enabled={ids} />}</ResourceView>

@@ -2,9 +2,11 @@ import type { JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 
 export interface TextFieldProps {
+  readonly id?: string;
   readonly value: string;
   readonly onInput: (v: string) => void;
   readonly placeholder?: string;
+  readonly ariaLabel?: string;
   readonly type?: 'text' | 'password';
   readonly multiline?: boolean;
   readonly rows?: number;
@@ -24,7 +26,7 @@ function isSubmitKey(event: KeyboardEvent, submitOn: 'enter' | 'mod-enter'): boo
 }
 
 export function TextField(props: TextFieldProps): JSX.Element {
-  const { value, onInput, placeholder, type = 'text', multiline = false, rows = 3, disabled = false, autoFocus = false, onSubmit } = props;
+  const { id, value, onInput, placeholder, ariaLabel, type = 'text', multiline = false, rows = 3, disabled = false, autoFocus = false, onSubmit } = props;
   const submitOn = props.submitOn ?? (multiline ? 'mod-enter' : 'enter');
   const ref = useRef<FieldElement>(null);
   useEffect(() => {
@@ -39,7 +41,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
     }
   };
   const handleInput = (event: Event): void => onInput((event.currentTarget as FieldElement).value);
-  const shared = { class: 'gw-input', value, placeholder, disabled, onInput: handleInput, onKeyDown: handleKeyDown };
+  const shared = { id, class: 'gw-input', value, placeholder, 'aria-label': ariaLabel, disabled, onInput: handleInput, onKeyDown: handleKeyDown };
   return multiline
     ? <textarea {...shared} ref={ref as JSX.HTMLAttributes<HTMLTextAreaElement>['ref']} rows={rows} />
     : <input {...shared} ref={ref as JSX.HTMLAttributes<HTMLInputElement>['ref']} type={type} autoComplete={type === 'password' ? 'off' : undefined} />;

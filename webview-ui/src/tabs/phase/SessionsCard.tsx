@@ -9,7 +9,7 @@ export function SessionsCard({ sessions, activeSessionId }: { readonly sessions:
     return null;
   }
   return (
-    <Card id="phase-sessions" title={t('workspace.sessions', { count: sessions.length })} collapsible defaultCollapsed persistKey="phase.sessions">
+    <Card id="phase-sessions" title={t('workspace.sessions', { count: sessions.length })} defaultCollapsed persistKey="phase.sessions">
       <ul class="gw-phase-sessions">
         {[...sessions].reverse().map((session) => (
           <li key={session.session_id} class="gw-phase-session">

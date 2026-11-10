@@ -17,7 +17,7 @@ export const ADVANCE_BOUNDARIES = [
   { key: '3.1', labelKey: 'advanceModes.boundary31Name', descriptionKey: 'advanceModes.boundary31Desc' },
   { key: '3.x', labelKey: 'advanceModes.boundary3xName', descriptionKey: 'advanceModes.boundary3xDesc' },
   { key: '4', labelKey: 'advanceModes.boundary4Name', descriptionKey: 'advanceModes.boundary4Desc' },
-  { key: '5', labelKey: 'advanceModes.boundary5Name', descriptionKey: 'advanceModes.boundary5Desc' },
+  { key: '5', labelKey: 'advanceModes.boundary5Name', descriptionKey: 'vsc.settings.boundary5Desc' },
 ] as const;
 
 export const ADVANCE_MODE_OPTIONS = [
@@ -95,8 +95,4 @@ export function describeWarning(warning: ConfiguratorWarning): string {
 export function toggleModule(enabled: readonly string[], id: string, isOn: boolean): string[] {
   const rest = enabled.filter((moduleId) => moduleId !== id);
   return isOn ? [...rest, id] : rest;
-}
-
-export function sameSet(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((item) => right.includes(item));
 }
