@@ -1,22 +1,11 @@
-import type * as vscode from 'vscode';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_NAV } from '../src/shared/navigation';
 import { LastTabMemory } from '../src/webview/lastTabMemory';
+import { memoryMemento } from './support/fixtures';
 
 const SHOP = { projectId: 'shop', branch: 'feature/a' };
 const OTHER = { projectId: 'shop', branch: 'feature/b' };
 const GATE_NAV = { tab: 'phase', anchor: 'phase-progression' } as const;
-
-function memoryMemento(initial: Record<string, unknown> = {}): vscode.Memento {
-  const values = new Map(Object.entries(initial));
-  return {
-    keys: () => [...values.keys()],
-    get: <T>(key: string, defaultValue?: T) => (values.has(key) ? values.get(key) : defaultValue) as T,
-    update: async (key: string, value: unknown) => {
-      values.set(key, value);
-    },
-  } as vscode.Memento;
-}
 
 describe('LastTabMemory', () => {
   it('initialNav_shouldReturnProgress_whenWorkspaceWasNeverVisitedAndNothingWaits', () => {

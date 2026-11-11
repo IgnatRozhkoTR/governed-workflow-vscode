@@ -63,7 +63,7 @@ export function reviewThreadElementId(commentId: number): string {
   return `gw-review-thread-${commentId}`;
 }
 
-// Reopening is the one step the user takes: an open thread falls under Resolve all, which clears what the resolve flag did not.
+// Only legacy rows can be resolved without a result; Resolve all clears them, and reopening is the alternative.
 export function ReopenBlockerButton({ commentId }: { readonly commentId: number }): JSX.Element {
   const t = useT();
   return (
@@ -78,7 +78,7 @@ export function ReopenBlockerButton({ commentId }: { readonly commentId: number 
   );
 }
 
-// A server defect leaves the thread counted after Resolve, so the marker warns rather than alarms and carries its own fix.
+// Only legacy rows can stay counted after Resolve, so the marker warns rather than alarms and carries its own fix.
 function StillBlockingMarker({ commentId }: { readonly commentId: number }): JSX.Element {
   const t = useT();
   return (

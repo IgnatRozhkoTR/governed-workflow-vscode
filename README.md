@@ -19,6 +19,18 @@ The panel follows the VS Code theme and the workspace locale. Its strings come f
 
 Native features stay native. Opening a file, a diff, a terminal or the worktree from the panel uses the editor, not a copy of it.
 
+## Picking a workspace opens its worktree
+
+Picking a workspace (the Projects view, Switch Workspace, or the switch button in Workspace Control) also opens its worktree when this window is not already on it. A window counts as already there when one of its folders is the worktree or sits inside it, so a window on one repo of a multi-repo workspace stays put. `governedWorkflow.onSelectWorkspace` chooses how: `newWindow` (default), `sameWindow`, `addFolder` (adds the worktree as another folder, no reload) or `off` (only switch the panel). **Open Worktree** keeps asking which window to use. When the worktree is not on the machine the extension runs on, the workspace only opens in the panel.
+
+A window remembers the workspace picked in it. A window opened by a pick shows that workspace right away. Any other window opened on a worktree finds its workspace with one projects list call plus one workspaces list call for the project that contains the folder; nothing else is fetched.
+
+## Companions
+
+Some setups need another extension. VS Code has no optional dependencies, so the extension offers them when they matter, with **Install**, **Not now** and **Don't ask again**. **Governed Workflow: Companions** lists them with their state and installs them.
+
+- **Remote - SSH** (`ms-vscode-remote.remote-ssh`): needed only when VS Code runs on a different machine from the code and the admin panel. Offered when `governedWorkflow.serverUrl` is not localhost, and by **Governed Workflow: Work with Another Machine**, which opens Remote-SSH's Connect to Host when it is installed. Never offered inside a Remote-SSH window.
+
 ## Comments
 
 - In an editor or a diff, use the `+` in the gutter to comment on a line or a range, or the file comment button for the whole file.
@@ -42,6 +54,7 @@ The extension prefers the workspace side (`extensionKind: workspace, ui`) and fa
 | `governedWorkflow.serverUrl` | `http://localhost:5111` | Base URL of the admin panel. |
 | `governedWorkflow.pollIntervalSeconds` | `10` | State polling interval while the window is focused and the Workspace Control panel is not visible. While the panel is visible and the window focused, the state is polled every 3 seconds (cheap ETag/304 requests). Minimum 3. |
 | `governedWorkflow.terminal.maximize` | `true` | Maximize the editor area when the Claude terminal opens. |
+| `governedWorkflow.onSelectWorkspace` | `newWindow` | What picking a workspace does when this window is not on its worktree: `newWindow`, `sameWindow`, `addFolder` or `off`. |
 
 ## Token setup
 

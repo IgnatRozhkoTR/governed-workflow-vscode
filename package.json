@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -43,6 +43,23 @@
           "type": "boolean",
           "default": true,
           "description": "Maximize the editor area when a Claude session terminal opens."
+        },
+        "governedWorkflow.onSelectWorkspace": {
+          "type": "string",
+          "enum": [
+            "newWindow",
+            "sameWindow",
+            "addFolder",
+            "off"
+          ],
+          "default": "newWindow",
+          "enumDescriptions": [
+            "Open the workspace worktree in a new window.",
+            "Open the workspace worktree in this window (the window reloads).",
+            "Add the workspace worktree to this window as another folder, without a reload.",
+            "Only switch Workspace Control; open worktrees with the Open Worktree command."
+          ],
+          "description": "What happens when you pick a workspace (Projects view, Switch Workspace, Workspace Control) and this window is not already on its worktree. Applies only when the worktree is on the machine the extension runs on."
         }
       }
     },
@@ -250,6 +267,16 @@
         "title": "Switch Workspace…",
         "category": "Governed Workflow",
         "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "governedWorkflow.workWithAnotherMachine",
+        "title": "Work with Another Machine",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.companions",
+        "title": "Companions",
+        "category": "Governed Workflow"
       },
       {
         "command": "governedWorkflow.killClaude",

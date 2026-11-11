@@ -235,7 +235,8 @@ export function ChangesTab({ active }: TabProps): JSX.Element {
           branches={branchList}
           activeRef={historyRef}
           activeCommit={commit}
-          canRewrite={repoList.length <= 1}
+          canRewrite={!isAllRepos}
+          repo={repo}
           onSelectRef={selectHistoryRef}
           onSelectCommit={setCommit}
         />

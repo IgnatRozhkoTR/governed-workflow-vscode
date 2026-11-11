@@ -57,14 +57,18 @@ export function getHistory(q: HistoryQuery): Promise<HistoryResponse> {
   return apiGet<HistoryResponse>(ws('history'), { ref: q.ref, repo: q.repo });
 }
 
-export function historyRename(sha: string, message: string): Promise<unknown> {
-  return apiPost(ws('history/rename'), { sha, message });
+export function historyRename(sha: string, message: string, repo?: string): Promise<unknown> {
+  return apiPost(ws('history/rename'), withRepo({ sha, message }, repo));
 }
 
-export function historyUndo(): Promise<unknown> {
-  return apiPost(ws('history/undo'), {});
+export function historyUndo(repo?: string): Promise<unknown> {
+  return apiPost(ws('history/undo'), withRepo({}, repo));
 }
 
-export function historySquash(commits: readonly string[], message: string): Promise<unknown> {
-  return apiPost(ws('history/squash'), { commits, message });
+export function historySquash(commits: readonly string[], message: string, repo?: string): Promise<unknown> {
+  return apiPost(ws('history/squash'), withRepo({ commits, message }, repo));
+}
+
+function withRepo<T extends object>(body: T, repo: string | undefined): T & { repo?: string } {
+  return repo === undefined || repo === '' ? body : { ...body, repo };
 }

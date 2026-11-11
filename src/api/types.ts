@@ -215,6 +215,7 @@ export interface WorkspaceState {
   plan: Plan;
   plan_status: string | null;
   phase_sequence: string[];
+  available_phases?: string[];
   enabled_phases: string[];
   workflow_mode: string;
   review_mode: string;

@@ -21,6 +21,10 @@ export function selectablePhases(sequence: readonly string[], currentPhase: stri
   return currentPhase === '' || sequence.includes(currentPhase) ? sequence : [currentPhase, ...sequence];
 }
 
+export function phaseChoices(availablePhases: readonly string[] | undefined, sequence: readonly string[]): readonly string[] {
+  return availablePhases ?? sequence;
+}
+
 export function canSubmitPhase(target: string, currentPhase: string, isPending: boolean): boolean {
   return !isPending && target !== '' && target !== currentPhase;
 }
@@ -60,12 +64,14 @@ export function SetPhaseDialog({ open, onClose }: SetPhaseDialogProps): JSX.Elem
 function usePhaseOptions(currentPhase: string): readonly SelectOption[] {
   const t = useT();
   const phaseLabel = usePhaseLabel();
+  const availablePhases = useStore((s) => s.state?.available_phases);
   const sequence = useStore((s) => s.state?.phase_sequence ?? NO_PHASES);
   const toOption = (phase: string): SelectOption => {
     const label = `${phase} · ${phaseLabel(phase)}`;
     return { value: phase, label: phase === currentPhase ? t('vsc.phase.currentOption', { label }) : label };
   };
-  return [...selectablePhases(sequence, currentPhase).map(toOption), { value: CUSTOM_PHASE, label: t('vsc.phase.custom') }];
+  const options = selectablePhases(phaseChoices(availablePhases, sequence), currentPhase).map(toOption);
+  return availablePhases === undefined ? [...options, { value: CUSTOM_PHASE, label: t('vsc.phase.custom') }] : options;
 }
 
 interface GuardedPhaseChange {

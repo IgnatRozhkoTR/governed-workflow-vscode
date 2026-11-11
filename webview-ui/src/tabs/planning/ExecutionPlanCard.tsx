@@ -7,6 +7,7 @@ import { classNames } from '../../components/types';
 import { useAnchorTarget } from '../../components/useAnchor';
 import { useT } from '../../i18n/i18n';
 import { useStore } from '../../store/hooks';
+import { PLAN_TARGET, subPhaseTarget, taskTarget } from './planTargets';
 import { isCurrentSubPhase, shouldCollapseSubPhase } from './subPhaseModel';
 
 interface ExecutionPlanCardProps {
@@ -50,7 +51,7 @@ export function ExecutionPlanCard({ plan, phase, scope, secondaryAction }: Execu
     <Card
       id="plan-execution"
       title={t('cards.executionPlan')}
-      actions={<>{secondaryAction}<CommentIcon scope="plan" target={t('plan.entirePlan')} label={t('plan.entirePlan')} /></>}
+      actions={<>{secondaryAction}<CommentIcon scope="plan" target={PLAN_TARGET} label={t('plan.entirePlan')} /></>}
     >
       {plan.description !== undefined && plan.description !== '' && <div class="gw-planning-description"><Markdown source={plan.description} compact /></div>}
       {items.length === 0 && <EmptyState icon="checklist" message={t('vsc.planning.noPlan')} />}
@@ -83,7 +84,7 @@ function SubPhaseCard({ item, index, phase, scope, isCollapsedByDefault }: SubPh
       title={<><Badge label={item.id || String(index + 1)} tone={isCurrent ? 'warning' : 'info'} title={isCurrent ? t('vsc.planning.currentPhase') : undefined} /><span>{name === '' ? t('plan.group') : name}</span></>}
       badge={mode === undefined || mode === '' ? undefined : <Badge label={mode} tone="info" />}
       subtitle={scope === undefined ? undefined : <SubPhaseScope scope={scope} />}
-      actions={<><SubPhaseProgress tasks={tasks} /><CommentIcon scope="plan" target={t('plan.subPhaseComment', { id: item.id, name })} /></>}
+      actions={<><SubPhaseProgress tasks={tasks} /><CommentIcon scope="plan" target={subPhaseTarget(item.id)} /></>}
     >
       {tasks.length === 0 && <p class="gw-muted">{t('plan.noTasks')}</p>}
       <ul class="gw-planning-tasks">
@@ -149,7 +150,7 @@ function TaskRow({ task, anchorId }: { readonly task: PlanTask; readonly anchorI
         <span class="gw-planning-task-meta">
           {status !== PENDING_STATUS && <Badge label={statusLabel} tone={status === DONE_STATUS ? 'success' : 'warning'} />}
           {task.group !== undefined && task.group !== '' && <Badge label={task.group} tone="neutral" icon="git-merge" title={t('plan.group')} />}
-          <CommentIcon scope="plan" target={`Task: ${task.title}`} />
+          <CommentIcon scope="plan" target={taskTarget(task.title)} />
         </span>
       </div>
       {isExpanded && hasDetail && (

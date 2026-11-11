@@ -15,6 +15,7 @@ export interface HistoryPanelProps {
   readonly onSelectRef: (ref: string | undefined) => void;
   readonly onSelectCommit: (sha: string) => void;
   readonly canRewrite: boolean;
+  readonly repo?: string;
 }
 
 interface ActionAvailability {
@@ -25,7 +26,7 @@ interface ActionAvailability {
 const MUTATION_OPTIONS = { invalidates: ['diff', 'history'], refreshState: true } as const;
 
 export function HistoryPanel(props: HistoryPanelProps): JSX.Element {
-  const { commits, branches, activeRef, activeCommit, onSelectRef, onSelectCommit, canRewrite } = props;
+  const { commits, branches, activeRef, activeCommit, onSelectRef, onSelectCommit, canRewrite, repo } = props;
   const t = useT();
   const dialogs = useDialogs();
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -35,7 +36,7 @@ export function HistoryPanel(props: HistoryPanelProps): JSX.Element {
   const squash = useMutation(historySquash, { ...MUTATION_OPTIONS, successToast: t('vsc.changes.squashed') });
   const target = renameTarget(commits, activeCommit);
   const picked = selectedCommitsInOrder(selected, commits);
-  // The server rewrites history only in the workspace's own working tree, so per-repository rewrites are not offered.
+  // Rewrites target one repository, so the all-repositories view offers none.
   const availability = (isAllowed: boolean, deniedKey: string): ActionAvailability => {
     if (!canRewrite) {
       return { disabled: true, title: t('vsc.changes.rewriteSingleRepoOnly') };
@@ -70,7 +71,7 @@ export function HistoryPanel(props: HistoryPanelProps): JSX.Element {
       confirmLabel: t('history.rename'),
     });
     if (message !== undefined && message.trim() !== '') {
-      await rename.run(target.full_sha, message.trim());
+      await rename.run(target.full_sha, message.trim(), repo);
     }
   };
   const runUndo = async (): Promise<void> => {
@@ -82,11 +83,11 @@ export function HistoryPanel(props: HistoryPanelProps): JSX.Element {
       danger: true,
     });
     if (isConfirmed) {
-      await undo.run();
+      await undo.run(repo);
     }
   };
   const confirmSquash = async (message: string): Promise<void> => {
-    const result = await squash.run(picked.map((commit) => commit.full_sha), message);
+    const result = await squash.run(picked.map((commit) => commit.full_sha), message, repo);
     if (result !== undefined) {
       setSquashOpen(false);
       setSelected([]);

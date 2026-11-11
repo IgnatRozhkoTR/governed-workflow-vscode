@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { parseOnSelectWorkspace, type OnSelectWorkspace } from '../worktree/onSelectWorkspace';
 
 const CONFIG_SECTION = 'governedWorkflow';
 const DEFAULT_SERVER_URL = 'http://localhost:5111';
@@ -27,6 +28,10 @@ export class Settings implements vscode.Disposable {
   get pollIntervalSeconds(): number {
     const configured = this.configuration().get<number>('pollIntervalSeconds', DEFAULT_POLL_INTERVAL_SECONDS);
     return Number.isFinite(configured) ? Math.max(configured, MIN_POLL_INTERVAL_SECONDS) : DEFAULT_POLL_INTERVAL_SECONDS;
+  }
+
+  get onSelectWorkspace(): OnSelectWorkspace {
+    return parseOnSelectWorkspace(this.configuration().get<unknown>('onSelectWorkspace'));
   }
 
   dispose(): void {

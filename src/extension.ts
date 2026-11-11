@@ -24,6 +24,11 @@ import { registerProjectsTree } from './views/projectsTree';
 import { registerWorkspaceIndicators } from './views/workspaceIndicators';
 import { registerControlPanel, type WorkspaceControlPanelHost } from './webview/controlPanel';
 import { registerPanelCommands } from './webview/panelCommands';
+import { registerCompanions } from './companions/companionCommands';
+import { registerWindowAssociation } from './worktree/windowAssociation';
+import { WindowSelectionMemory } from './worktree/windowSelectionMemory';
+import { WorkspaceSelector } from './worktree/workspaceSelector';
+import { WorktreeHandoff } from './worktree/worktreeHandoff';
 
 const SET_TOKEN_ACTION = 'Set token';
 
@@ -42,11 +47,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerVirtualFileSystems(context, client);
   const panel = registerControlPanel(context, { client, active, locator });
   registerPanelCommands(context, { client, active, panel });
-  openPanelOnWorkspaceSelect(context, active, panel);
   const projectsTree = registerProjectsTree(context, { client });
   registerLauncherTree(context, { active });
   registerWorkspaceIndicators(context, active);
-  registerWorkspaceCommands(context, { client, active, tokens, locator, projectsTree });
+  const handoff = new WorktreeHandoff(context.globalState);
+  const selector = new WorkspaceSelector({ client, active, locator, settings, handoff });
+  registerWorkspaceCommands(context, { client, active, tokens, locator, projectsTree, selector });
   registerProjectCommands(context, { client, projectsTree, activeWorkspace: view });
   registerChangesTree(context, { client, locator, active });
   registerComments(context, { client, locator, active, panel });
@@ -55,6 +61,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerImageAttach(context, { client, activeWorkspace: view, claude });
   registerGateCommands(context, { client, active: view });
   registerAnnotations(context);
+  registerCompanions(context, { settings });
+  registerWindowAssociation(context, { client, active, selector, handoff, memory: new WindowSelectionMemory(context.workspaceState) });
 
   void promptForMissingToken(tokens);
 }
@@ -85,16 +93,6 @@ function registerComments(context: vscode.ExtensionContext, deps: CommentWiringD
   registerResourceComments(context, { comments, locator: deps.locator });
   registerCommentsView(context, { comments, controller, locator: deps.locator, panel: deps.panel });
   context.subscriptions.push(comments.onDidMutate(() => deps.panel.invalidate(['comments', 'reviewThreads'])));
-}
-
-function openPanelOnWorkspaceSelect(context: vscode.ExtensionContext, active: ActiveWorkspace, panel: WorkspaceControlPanelHost): void {
-  context.subscriptions.push(
-    active.onDidChange((ref) => {
-      if (ref !== undefined) {
-        panel.createOrShow();
-      }
-    }),
-  );
 }
 
 function activeView(context: vscode.ExtensionContext, active: ActiveWorkspace) {

@@ -8,6 +8,7 @@ import { Badge } from './Badge';
 import { Button } from './Button';
 import { useDialogs, type ConfirmOptions, type DialogNotice } from './DialogHost';
 import { createExclusiveLock, detach } from './exclusiveLock';
+import { PLAN_TARGET } from '../tabs/planning/planTargets';
 import { toasts } from './ToastHost';
 import type { Codicon, Tone } from './types';
 
@@ -81,7 +82,7 @@ export function usePlanStatusActions(): PlanStatusActions {
   const isSubmitting = planStatusLock.useIsSubmitting();
   const mutation = useMutation(async (status: PlanStatus, feedback?: string) => {
     if (feedback !== undefined && feedback.trim() !== '') {
-      await addComment({ scope: 'plan', target: t('plan.entirePlan'), text: feedback.trim() });
+      await addComment({ scope: 'plan', target: PLAN_TARGET, text: feedback.trim() });
     }
     await setPlanStatus(status);
     return status;

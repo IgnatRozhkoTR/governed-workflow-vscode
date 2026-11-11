@@ -56,3 +56,14 @@ export function makeComment(overrides: Partial<ReviewComment> = {}): ReviewComme
     ...overrides,
   };
 }
+
+export function memoryMemento(initial: Record<string, unknown> = {}): import('vscode').Memento {
+  const values = new Map(Object.entries(initial));
+  return {
+    keys: () => [...values.keys()],
+    get: <T>(key: string, defaultValue?: T) => (values.has(key) ? values.get(key) : defaultValue) as T,
+    update: async (key: string, value: unknown) => {
+      values.set(key, value);
+    },
+  } as import('vscode').Memento;
+}

@@ -16,6 +16,7 @@ import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import { remoteFileUriParts } from '../fs/uris';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
 import type { ProjectsTreeProvider } from '../views/projectsTree';
+import type { WorkspaceSelector } from '../worktree/workspaceSelector';
 import { unwrapRef, type RefArgument } from './refArgument';
 
 export const COMMAND_IDS = {
@@ -43,13 +44,14 @@ export interface WorkspaceCommandDeps {
   readonly tokens: TokenStore;
   readonly locator: WorkspaceLocator;
   readonly projectsTree: ProjectsTreeProvider;
+  readonly selector: WorkspaceSelector;
 }
 
 type ProjectArgument = { readonly project: Project } | undefined;
 
 export function registerWorkspaceCommands(context: vscode.ExtensionContext, deps: WorkspaceCommandDeps): void {
   const handlers: Record<string, (arg?: RefArgument) => Promise<void>> = {
-    [COMMAND_IDS.selectWorkspace]: async (arg) => selectWorkspace(deps, requireRef(deps, arg)),
+    [COMMAND_IDS.selectWorkspace]: (arg) => deps.selector.select(requireRef(deps, arg)),
     [COMMAND_IDS.openWorktree]: async (arg) => openWorktree(deps, requireRef(deps, arg)),
     [COMMAND_IDS.createProject]: () => createProject(deps),
     [COMMAND_IDS.editTicketContext]: async (arg) => editTicketContext(deps, requireRef(deps, arg)),
@@ -88,10 +90,6 @@ function requireRef(deps: WorkspaceCommandDeps, arg: RefArgument): WorkspaceRef 
     throw new ApiError(0, 'no_workspace_selected', 'Select a workspace first.');
   }
   return ref;
-}
-
-function selectWorkspace(deps: WorkspaceCommandDeps, ref: WorkspaceRef): void {
-  deps.active.select(ref);
 }
 
 async function openWorktree(deps: WorkspaceCommandDeps, ref: WorkspaceRef): Promise<void> {
@@ -166,7 +164,7 @@ async function createWorkspace(deps: WorkspaceCommandDeps, preselected: Project 
   response.attached_repos?.forEach((repo) => notifyBaseSync(repo.base_sync, repo.rel_path));
   await applyInitialContext(deps, ref, ticketName, ticketContext);
   deps.projectsTree.refresh();
-  deps.active.select(ref);
+  await deps.selector.selectInThisWindow(ref);
   await offerResume(ref);
 }
 

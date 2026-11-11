@@ -14,6 +14,8 @@ VS Code extension that is a second UI for Governed Workflow, next to the admin p
 - `src/comments/` — comments in editors, diffs and the explorer, shared with the panel.
 - `src/terminal/` — Claude and other terminal sessions over WebSocket, image attach.
 - `src/commands/` — command handlers for projects, workspaces and gates.
+- `src/worktree/` — picking a workspace opens its worktree; window-to-workspace association on startup.
+- `src/companions/` — registry and install prompts for optional companion extensions.
 - `src/annotations/` — extension point for future code annotations.
 - `webview-ui/` — the panel's Preact app: one folder per tab under `src/tabs/`, shared components, store and i18n. Binding module shapes live in `src/tabs/types.ts`.
 - `test/` — vitest unit tests and the `vscode` module stub.

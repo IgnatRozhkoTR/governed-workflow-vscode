@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as core from '../../webview-ui/src/api/core';
-import { SetPhaseDialog, canSubmitPhase, selectablePhases } from '../../webview-ui/src/components/SetPhaseDialog';
+import { SetPhaseDialog, canSubmitPhase, phaseChoices, selectablePhases } from '../../webview-ui/src/components/SetPhaseDialog';
 import { store } from '../../webview-ui/src/store/store';
 import { makeState } from '../support/fixtures';
 
@@ -99,6 +99,29 @@ describe('SetPhaseDialog', () => {
     fireEvent.change(select(), { target: { value: '2.1' } });
 
     expect(submitButton().disabled).toBe(false);
+  });
+});
+
+describe('available phases', () => {
+  it('open_shouldListAvailablePhasesWithoutCustomOption_whenServerReportsThem', () => {
+    store.applyHostEvent({ kind: 'event', event: 'state', payload: { workspace: { projectId: 'p', branch: 'b' }, state: makeState({ phase: '2.0', phase_sequence: SEQUENCE, available_phases: ['2.0', '2.1', '2.2'] }), etag: null } });
+    render(<SetPhaseDialog open onClose={vi.fn()} />);
+
+    const values = [...select().options].map((option) => option.value);
+
+    expect(values).toEqual(['2.0', '2.1', '2.2']);
+  });
+
+  it('open_shouldFallBackToSequenceWithCustomOption_whenServerOmitsAvailablePhases', () => {
+    showWorkspace('2.0');
+    render(<SetPhaseDialog open onClose={vi.fn()} />);
+
+    expect([...select().options].map((option) => option.value)).toEqual([...SEQUENCE, CUSTOM_PHASE]);
+  });
+
+  it('phaseChoices_shouldPreferAvailablePhases_whenPresent', () => {
+    expect(phaseChoices(['1.1'], SEQUENCE)).toEqual(['1.1']);
+    expect(phaseChoices(undefined, SEQUENCE)).toEqual(SEQUENCE);
   });
 });
 
