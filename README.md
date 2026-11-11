@@ -21,9 +21,18 @@ Native features stay native. Opening a file, a diff, a terminal or the worktree 
 
 ## Picking a workspace opens its worktree
 
-Picking a workspace (the Projects view, Switch Workspace, or the switch button in Workspace Control) also opens its worktree when this window is not already on it. A window counts as already there when one of its folders is the worktree or sits inside it, so a window on one repo of a multi-repo workspace stays put. `governedWorkflow.onSelectWorkspace` chooses how: `newWindow` (default), `sameWindow`, `addFolder` (adds the worktree as another folder, no reload) or `off` (only switch the panel). **Open Worktree** keeps asking which window to use. When the worktree is not on the machine the extension runs on, the workspace only opens in the panel.
+Picking a workspace (the Projects view, Switch Workspace, or the switch button in Workspace Control) also opens its worktree when this window is not already on it. A window counts as already there when one of its folders is the worktree or sits inside it, so a window on one repo of a multi-repo workspace stays put. `governedWorkflow.onSelectWorkspace` chooses how: `newWindow` (default), `sameWindow`, `addFolder` (adds the worktree as another folder, no reload) or `off` (only switch the panel). **Open Worktree** keeps asking which window to use. When the worktree is on neither this machine nor reachable over SSH, the workspace only opens in the panel.
 
 A window remembers the workspace picked in it. A window opened by a pick shows that workspace right away. Any other window opened on a worktree finds its workspace with one projects list call plus one workspaces list call for the project that contains the folder; nothing else is fetched.
+
+## Worktrees on the admin panel's machine
+
+When VS Code runs on a laptop and `governedWorkflow.serverUrl` points at another machine (for example `http://MacBook-Pro-Ignat.local:5111`), picking a workspace whose worktree is not on the laptop opens it on the panel's machine in a Remote-SSH window, following `governedWorkflow.onSelectWorkspace` (`addFolder` opens a new window, since a remote folder cannot join a local window).
+
+- **SSH target:** `governedWorkflow.sshHost` (for example `ig@mac` or an `~/.ssh/config` alias) when set; otherwise the user reported by the panel's `/api/server-info` at the `serverUrl` host, or just the host on panels without that endpoint. SSH keys or a password prompt are up to Remote-SSH.
+- **Remote - SSH missing:** the extension offers to install it and then opens the worktree. Declining keeps the workspace in Workspace Control only.
+- **The extension on the SSH host:** it adds itself to `remote.defaultExtensionsIfInstalledLocally`, so VS Code copies the local install (a VSIX install too) to the host on connect. The very first window on a new host may still start the extension on the laptop; it then offers **Reload Window** (or **Install on SSH Host...** if the copy did not happen). After an update of the local VSIX, update the host copy from the Extensions view.
+- **In the new window** the workspace is selected automatically, and the admin token carries over because secret storage lives on the laptop. Nothing is prompted inside a remote window.
 
 ## Companions
 
@@ -55,6 +64,7 @@ The extension prefers the workspace side (`extensionKind: workspace, ui`) and fa
 | `governedWorkflow.pollIntervalSeconds` | `10` | State polling interval while the window is focused and the Workspace Control panel is not visible. While the panel is visible and the window focused, the state is polled every 3 seconds (cheap ETag/304 requests). Minimum 3. |
 | `governedWorkflow.terminal.maximize` | `true` | Maximize the editor area when the Claude terminal opens. |
 | `governedWorkflow.onSelectWorkspace` | `newWindow` | What picking a workspace does when this window is not on its worktree: `newWindow`, `sameWindow`, `addFolder` or `off`. |
+| `governedWorkflow.sshHost` | empty | SSH target for worktrees on the admin panel's machine, e.g. `ig@mac` or an `~/.ssh/config` alias. Empty: the panel's reported user at the `serverUrl` host. |
 
 ## Token setup
 

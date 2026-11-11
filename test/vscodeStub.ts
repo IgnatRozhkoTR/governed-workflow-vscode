@@ -29,7 +29,12 @@ export class Uri {
   private constructor(
     readonly scheme: string,
     readonly path: string,
+    readonly authority = '',
   ) {}
+
+  static from(components: { scheme: string; authority?: string; path?: string }): Uri {
+    return new Uri(components.scheme, components.path ?? '', components.authority ?? '');
+  }
 
   static file(path: string): Uri {
     return new Uri('file', path);
@@ -85,6 +90,10 @@ export class Selection {
 export class MarkdownString {
   constructor(readonly value: string) {}
 }
+
+export const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 } as const;
+export const ExtensionKind = { UI: 1, Workspace: 2 } as const;
+export type ExtensionKind = (typeof ExtensionKind)[keyof typeof ExtensionKind];
 
 export const StatusBarAlignment = { Left: 1, Right: 2 } as const;
 export const CommentThreadState = { Unresolved: 0, Resolved: 1 } as const;
@@ -142,9 +151,15 @@ export const workspace = {
   textDocuments: [] as unknown[],
   fs: { writeFile: vi.fn() },
   openTextDocument: vi.fn(),
+  getConfiguration: vi.fn(),
+};
+
+export const extensions = {
+  getExtension: vi.fn(),
 };
 
 export const env = {
+  remoteName: undefined as string | undefined,
   clipboard: { writeText: vi.fn() },
   openExternal: vi.fn(),
 };

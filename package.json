@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.16",
+  "version": "0.2.17",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -59,7 +59,12 @@
             "Add the workspace worktree to this window as another folder, without a reload.",
             "Only switch Workspace Control; open worktrees with the Open Worktree command."
           ],
-          "description": "What happens when you pick a workspace (Projects view, Switch Workspace, Workspace Control) and this window is not already on its worktree. Applies only when the worktree is on the machine the extension runs on."
+          "description": "What happens when you pick a workspace (Projects view, Switch Workspace, Workspace Control) and this window is not already on its worktree. When the worktree is on the admin panel's machine instead of this one, it opens there over Remote - SSH (addFolder then opens a new window)."
+        },
+        "governedWorkflow.sshHost": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "SSH target for opening worktrees that live on the admin panel's machine, for example `ig@mac` or a `~/.ssh/config` alias. Empty: the user reported by the admin panel at the host of `#governedWorkflow.serverUrl#`."
         }
       }
     },

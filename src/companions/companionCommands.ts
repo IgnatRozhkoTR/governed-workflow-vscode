@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { Settings } from '../config/settings';
 import { installCompanion, offerCompanion } from './companionPrompt';
-import { CompanionPromptMemory } from './companionPromptMemory';
+import type { CompanionPromptMemory } from './companionPromptMemory';
 import {
   COMPANIONS,
   REMOTE_SSH,
@@ -33,28 +33,28 @@ const PRESENCE_ICONS: Readonly<Record<CompanionPresence, string>> = {
 
 export interface CompanionDeps {
   readonly settings: Settings;
+  readonly memory: CompanionPromptMemory;
 }
 
 export function registerCompanions(context: vscode.ExtensionContext, deps: CompanionDeps): void {
-  const memory = new CompanionPromptMemory(context.globalState);
   context.subscriptions.push(
     vscode.commands.registerCommand(COMPANION_COMMAND_IDS.companions, () => pickCompanion(deps)),
-    vscode.commands.registerCommand(COMPANION_COMMAND_IDS.workWithAnotherMachine, () => workWithAnotherMachine(deps, memory)),
-    deps.settings.onDidChange(() => offerNeededCompanions(deps, memory)),
+    vscode.commands.registerCommand(COMPANION_COMMAND_IDS.workWithAnotherMachine, () => workWithAnotherMachine(deps)),
+    deps.settings.onDidChange(() => offerNeededCompanions(deps)),
   );
-  offerNeededCompanions(deps, memory);
+  offerNeededCompanions(deps);
 }
 
-function offerNeededCompanions(deps: CompanionDeps, memory: CompanionPromptMemory): void {
+function offerNeededCompanions(deps: CompanionDeps): void {
   const environment = currentEnvironment(deps);
   COMPANIONS.filter((companion) => companion.isNeeded(environment) && presenceOf(companion, environment) === 'missing').forEach(
-    (companion) => void offerCompanion(companion, 'environment', memory),
+    (companion) => void offerCompanion(companion, 'environment', deps.memory),
   );
 }
 
-async function workWithAnotherMachine(deps: CompanionDeps, memory: CompanionPromptMemory): Promise<void> {
+async function workWithAnotherMachine(deps: CompanionDeps): Promise<void> {
   if (presenceOf(REMOTE_SSH, currentEnvironment(deps)) === 'missing') {
-    await offerCompanion(REMOTE_SSH, 'command', memory);
+    await offerCompanion(REMOTE_SSH, 'command', deps.memory);
     return;
   }
   await vscode.commands.executeCommand(REMOTE_SSH_CONNECT_COMMAND);

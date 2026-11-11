@@ -30,6 +30,11 @@ export class Settings implements vscode.Disposable {
     return Number.isFinite(configured) ? Math.max(configured, MIN_POLL_INTERVAL_SECONDS) : DEFAULT_POLL_INTERVAL_SECONDS;
   }
 
+  get sshHost(): string | undefined {
+    const configured = this.configuration().get<string>('sshHost', '').trim();
+    return configured === '' ? undefined : configured;
+  }
+
   get onSelectWorkspace(): OnSelectWorkspace {
     return parseOnSelectWorkspace(this.configuration().get<unknown>('onSelectWorkspace'));
   }

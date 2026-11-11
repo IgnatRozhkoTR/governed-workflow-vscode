@@ -22,6 +22,7 @@ import type {
   ProjectRepo,
   ProjectSettings,
   ReviewComment,
+  ServerInfo,
   SetPhaseResult,
   SetupModule,
   SetupStartRequest,
@@ -88,6 +89,10 @@ export class ApiClient {
       throw await toApiError(response);
     }
     return true;
+  }
+
+  getServerInfo(): Promise<ServerInfo> {
+    return this.requestJson({ method: 'GET', path: '/api/server-info' });
   }
 
   async listProjects(): Promise<Project[]> {

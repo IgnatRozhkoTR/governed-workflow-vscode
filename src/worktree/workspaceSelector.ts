@@ -6,6 +6,7 @@ import type { Settings } from '../config/settings';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
 import type { OnSelectWorkspace } from './onSelectWorkspace';
+import type { SshOpenOutcome, SshWorktreeOpener } from './sshWorktreeOpener';
 import { windowFolderPaths } from './windowFolders';
 import type { WorktreeHandoff } from './worktreeHandoff';
 import { isWindowOnWorktree } from './worktreePaths';
@@ -20,6 +21,7 @@ export interface WorkspaceSelectorDeps {
   readonly locator: WorkspaceLocator;
   readonly settings: Settings;
   readonly handoff: WorktreeHandoff;
+  readonly sshOpener: SshWorktreeOpener;
 }
 
 export class WorkspaceSelector {
@@ -29,12 +31,14 @@ export class WorkspaceSelector {
 
   async select(ref: WorkspaceRef): Promise<void> {
     const behaviour = this.deps.settings.onSelectWorkspace;
-    const workingDir = behaviour === 'off' ? undefined : await this.localWorkingDir(ref);
-    if (behaviour === 'off' || workingDir === undefined || isWindowOnWorktree(windowFolderPaths(), workingDir)) {
+    const state = behaviour === 'off' ? undefined : await this.fetchState(ref);
+    if (behaviour === 'off' || state === undefined) {
       await this.selectInThisWindow(ref);
-      return;
+    } else if (this.deps.locator.isLocal(state)) {
+      await this.openLocalWorktree(behaviour, ref, state.working_dir);
+    } else {
+      await this.openRemoteWorktree(behaviour, ref, state.working_dir);
     }
-    await this.openWorktree(behaviour, ref, workingDir);
   }
 
   async selectInThisWindow(ref: WorkspaceRef): Promise<void> {
@@ -42,16 +46,21 @@ export class WorkspaceSelector {
     await vscode.commands.executeCommand(OPEN_CONTROL_PANEL_COMMAND);
   }
 
-  private async localWorkingDir(ref: WorkspaceRef): Promise<string | undefined> {
-    const state = await this.fetchState(ref);
-    if (state === undefined) {
-      return undefined;
+  private async openLocalWorktree(behaviour: OpeningBehaviour, ref: WorkspaceRef, workingDir: string): Promise<void> {
+    if (isWindowOnWorktree(windowFolderPaths(), workingDir)) {
+      await this.selectInThisWindow(ref);
+      return;
     }
-    if (!this.deps.locator.isLocal(state)) {
-      this.explainRemoteWorktree(ref);
-      return undefined;
+    await this.openWorktree(behaviour, ref, workingDir);
+  }
+
+  private async openRemoteWorktree(behaviour: OpeningBehaviour, ref: WorkspaceRef, worktreePath: string): Promise<void> {
+    const outcome = await this.deps.sshOpener.open(ref, worktreePath, behaviour);
+    if (outcome === 'opened') {
+      return;
     }
-    return state.working_dir;
+    this.explainRemoteWorktree(ref, outcome);
+    await this.selectInThisWindow(ref);
   }
 
   // An unreachable panel or a missing token still selects the workspace: the panel's connection banner reports the same error.
@@ -67,13 +76,17 @@ export class WorkspaceSelector {
     }
   }
 
-  private explainRemoteWorktree(ref: WorkspaceRef): void {
+  private explainRemoteWorktree(ref: WorkspaceRef, outcome: Exclude<SshOpenOutcome, 'opened'>): void {
     if (this.hasExplainedRemoteWorktrees) {
       return;
     }
     this.hasExplainedRemoteWorktrees = true;
+    const sshHint =
+      outcome === 'declined'
+        ? ' To open it on the admin panel machine instead, install Remote - SSH (Governed Workflow: Companions); set governedWorkflow.sshHost if SSH needs another host name or user.'
+        : '';
     void vscode.window.showInformationMessage(
-      `The worktree of ${ref.branch} is not on this machine, so it opens in Workspace Control only. Use Open Worktree to browse its files through the admin panel.`,
+      `The worktree of ${ref.branch} is not on this machine, so it opens in Workspace Control only. Use Open Worktree to browse its files through the admin panel.${sshHint}`,
     );
   }
 

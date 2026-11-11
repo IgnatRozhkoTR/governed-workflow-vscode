@@ -1,6 +1,6 @@
 export type CompanionHost = 'ui' | 'workspace';
 
-export type CompanionTrigger = 'environment' | 'command';
+export type CompanionTrigger = 'environment' | 'command' | 'openWorktree';
 
 export type CompanionPresence = 'installed' | 'missing' | 'unknown';
 
@@ -34,8 +34,12 @@ export const REMOTE_SSH: Companion = {
 export const COMPANIONS: readonly Companion[] = [REMOTE_SSH];
 
 export function isRemoteServerUrl(serverUrl: string): boolean {
+  return remoteServerHostname(serverUrl) !== undefined;
+}
+
+export function remoteServerHostname(serverUrl: string): string | undefined {
   const hostname = parseHostname(serverUrl);
-  return hostname !== undefined && !LOCAL_HOSTNAMES.includes(hostname.toLowerCase());
+  return hostname === undefined || hostname === '' || LOCAL_HOSTNAMES.includes(hostname.toLowerCase()) ? undefined : hostname;
 }
 
 // An extension host only sees extensions installed in that same host, so a UI-side companion is invisible from a remote window.

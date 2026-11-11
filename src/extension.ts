@@ -25,6 +25,9 @@ import { registerWorkspaceIndicators } from './views/workspaceIndicators';
 import { registerControlPanel, type WorkspaceControlPanelHost } from './webview/controlPanel';
 import { registerPanelCommands } from './webview/panelCommands';
 import { registerCompanions } from './companions/companionCommands';
+import { CompanionPromptMemory } from './companions/companionPromptMemory';
+import { registerSshHostCheck } from './worktree/sshHostExtension';
+import { SshWorktreeOpener } from './worktree/sshWorktreeOpener';
 import { registerWindowAssociation } from './worktree/windowAssociation';
 import { WindowSelectionMemory } from './worktree/windowSelectionMemory';
 import { WorkspaceSelector } from './worktree/workspaceSelector';
@@ -51,7 +54,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerLauncherTree(context, { active });
   registerWorkspaceIndicators(context, active);
   const handoff = new WorktreeHandoff(context.globalState);
-  const selector = new WorkspaceSelector({ client, active, locator, settings, handoff });
+  const companionMemory = new CompanionPromptMemory(context.globalState);
+  const sshOpener = new SshWorktreeOpener({ client, settings, handoff, companionMemory, extensionId: context.extension.id });
+  const selector = new WorkspaceSelector({ client, active, locator, settings, handoff, sshOpener });
   registerWorkspaceCommands(context, { client, active, tokens, locator, projectsTree, selector });
   registerProjectCommands(context, { client, projectsTree, activeWorkspace: view });
   registerChangesTree(context, { client, locator, active });
@@ -61,7 +66,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerImageAttach(context, { client, activeWorkspace: view, claude });
   registerGateCommands(context, { client, active: view });
   registerAnnotations(context);
-  registerCompanions(context, { settings });
+  registerCompanions(context, { settings, memory: companionMemory });
+  registerSshHostCheck(context);
   registerWindowAssociation(context, { client, active, selector, handoff, memory: new WindowSelectionMemory(context.workspaceState) });
 
   void promptForMissingToken(tokens);

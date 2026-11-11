@@ -3,6 +3,13 @@ export interface WorkspaceRef {
   readonly branch: string;
 }
 
+export interface ServerInfo {
+  readonly hostname: string;
+  readonly user: string;
+  readonly home: string;
+  readonly platform: string;
+}
+
 export type ProjectType = 'single' | 'multi';
 
 export interface Project {
