@@ -28,7 +28,7 @@ import { useMenuFocus } from './menuFocus';
 import { useTabTitle } from './tabTitles';
 import { useRememberedNavigate } from './useRememberedNavigate';
 
-type NativeMethod = 'native.resumeClaude' | 'native.switchWorkspace';
+type NativeMethod = 'native.resumeClaude' | 'native.showTerminal' | 'native.switchWorkspace';
 
 const FAST_WORKFLOW_MODE = 'fast';
 const LOCALE_OPTIONS = LOCALES.map((locale) => ({ value: locale, label: locale.toUpperCase() }));
@@ -77,6 +77,7 @@ function HeaderActions({ density, locale, isTicketFinished }: HeaderActionsProps
       <NeedsAttentionButton isIconOnly={isIconOnly} />
       {!isTicketFinished && <NotifyMenu isIconOnly={isIconOnly} />}
       {!isTicketFinished && <ResumeButton isIconOnly={isIconOnly} />}
+      <ShowTerminalButton />
       <SwitchButton isIconOnly={isIconOnly} />
       <LocaleSelect locale={locale} />
     </>
@@ -320,6 +321,12 @@ function ResumeButton({ isIconOnly }: { readonly isIconOnly: boolean }): JSX.Ele
   return <Button size="sm" variant="ghost" icon="debug-continue" label={isIconOnly ? undefined : t('buttons.resume')} title={t('buttons.resume')} onClick={() => callNative('native.resumeClaude')} />;
 }
 
+function ShowTerminalButton(): JSX.Element {
+  const t = useT();
+  const callNative = useNativeCall();
+  return <Button size="sm" variant="ghost" icon="terminal" title={t('vsc.header.showTerminal')} onClick={() => callNative('native.showTerminal')} />;
+}
+
 function SwitchButton({ isIconOnly }: { readonly isIconOnly: boolean }): JSX.Element {
   const t = useT();
   const callNative = useNativeCall();
@@ -425,6 +432,7 @@ function OverflowMenuItems({ locale, isTicketFinished, notify, localeChange, run
             <MenuItem key={choice.kind} icon="megaphone" label={t(choice.labelKey)} onSelect={() => runAndClose(() => void notify.send(choice.kind))} />
           ))}
           <MenuItem icon="debug-continue" label={t('buttons.resume')} onSelect={() => runAndClose(() => void callNative('native.resumeClaude'))} />
+          <MenuItem icon="terminal" label={t('vsc.header.showTerminal')} onSelect={() => runAndClose(() => void callNative('native.showTerminal'))} />
         </>
       )}
       <MenuItem icon="arrow-swap" label={t('header.switch')} onSelect={() => runAndClose(() => void callNative('native.switchWorkspace'))} />

@@ -31,6 +31,7 @@ export function createNativeHandlers(deps: NativeActionDeps): NativeHandlers {
     'native.openDiff': (args) => runNative(() => openDiffFor(deps.locator, requireSnapshot(deps), args)),
     'native.openAllChanges': (args) => runNative(() => openAllChangesFor(deps.locator, requireSnapshot(deps), args)),
     'native.resumeClaude': () => runNative(() => executeCommand('governedWorkflow.resumeClaude')),
+    'native.showTerminal': () => runNative(() => executeCommand('governedWorkflow.showTerminal')),
     'native.startClaude': (args) => runNative(() => startClaude(args.confirmed)),
     'native.openWorktree': () => runNative(() => executeCommand('governedWorkflow.openWorktree', requireSnapshot(deps).workspace)),
     'native.switchWorkspace': () => runNative(() => pickAndSelectWorkspace(deps)),

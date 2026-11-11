@@ -153,7 +153,11 @@ export const window = {
   showErrorMessage: vi.fn(),
   showInformationMessage: vi.fn(),
   showTextDocument: vi.fn(),
+  createTerminal: vi.fn(),
+  onDidCloseTerminal: vi.fn(),
 };
+
+export const ViewColumn = { Active: -1 };
 
 export const commands = {
   executeCommand: vi.fn(),

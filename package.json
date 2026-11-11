@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.20",
+  "version": "0.2.21",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -268,6 +268,12 @@
         "icon": "$(bell)"
       },
       {
+        "command": "governedWorkflow.showTerminal",
+        "title": "Show Claude Terminal",
+        "category": "Governed Workflow",
+        "icon": "$(terminal)"
+      },
+      {
         "command": "governedWorkflow.switchWorkspace",
         "title": "Switch Workspace…",
         "category": "Governed Workflow",
@@ -359,6 +365,12 @@
         "title": "Unresolve Thread",
         "category": "Governed Workflow",
         "icon": "$(discard)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "governedWorkflow.showTerminal",
+        "key": "ctrl+alt+`"
       }
     ],
     "menus": {
@@ -461,12 +473,12 @@
         {
           "command": "governedWorkflow.approvePlan",
           "when": "view == governedWorkflow.state && governedWorkflow.planPending",
-          "group": "navigation@3"
+          "group": "navigation@4"
         },
         {
           "command": "governedWorkflow.rejectPlan",
           "when": "view == governedWorkflow.state && governedWorkflow.planPending",
-          "group": "navigation@4"
+          "group": "navigation@5"
         },
         {
           "command": "governedWorkflow.switchWorkspace",
@@ -494,6 +506,11 @@
           "group": "navigation@1"
         },
         {
+          "command": "governedWorkflow.showTerminal",
+          "when": "view == governedWorkflow.state",
+          "group": "navigation@2"
+        },
+        {
           "command": "governedWorkflow.attachImage",
           "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace",
           "group": "2_claude@1"
@@ -506,17 +523,17 @@
         {
           "command": "governedWorkflow.refresh",
           "when": "view == governedWorkflow.state",
-          "group": "navigation@2"
+          "group": "navigation@3"
         },
         {
           "command": "governedWorkflow.approveGate",
           "when": "view == governedWorkflow.state && governedWorkflow.gatePending",
-          "group": "navigation@5"
+          "group": "navigation@6"
         },
         {
           "command": "governedWorkflow.rejectGate",
           "when": "view == governedWorkflow.state && governedWorkflow.gatePending",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "governedWorkflow.changes.toggleMode",

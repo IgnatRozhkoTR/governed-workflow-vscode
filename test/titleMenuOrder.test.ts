@@ -31,6 +31,7 @@ describe('workspace view title bar', () => {
     const commands = [
       'openControlPanel',
       'notifyClaude',
+      'showTerminal',
       'refresh',
       'approvePlan',
       'rejectPlan',
@@ -40,7 +41,7 @@ describe('workspace view title bar', () => {
 
     const ranks = commands.map(navigationRank);
 
-    expect(ranks).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(ranks).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   });
 
   it('titleBar_shouldKeepYoloToggleInTheLastOverflowGroup', () => {

@@ -13,6 +13,8 @@ const ANSI_RED = '\x1b[31m';
 const ANSI_RESET = '\x1b[0m';
 const START_CONFIRM_ACTION = 'Kill and start fresh';
 const KILL_CONFIRM_ACTION = 'Kill session';
+const SWITCH_WORKSPACE_ACTION = 'Switch Workspace…';
+const SWITCH_WORKSPACE_COMMAND = 'governedWorkflow.switchWorkspace';
 const DEFAULT_TERMINAL_LABEL = 'Claude';
 
 export interface ActiveWorkspaceSource {
@@ -152,6 +154,16 @@ class ClaudeTerminalManager implements ClaudeTerminalHandle {
     }
   }
 
+  async show(ref: WorkspaceRef): Promise<void> {
+    const existing = this.terminals.get(workspaceKey(ref));
+    if (existing === undefined) {
+      await this.runSessionCall(() => this.deps.client.terminalResume(ref), ref);
+      return;
+    }
+    existing.show(false);
+    await this.maximizeIfConfigured();
+  }
+
   async resume(ref: WorkspaceRef): Promise<void> {
     const existing = this.terminals.get(workspaceKey(ref));
     if (existing !== undefined) {
@@ -248,6 +260,13 @@ class ClaudeTerminalManager implements ClaudeTerminalHandle {
   }
 }
 
+async function offerWorkspacePicker(): Promise<void> {
+  const choice = await vscode.window.showInformationMessage('Select a workspace to show its Claude terminal.', SWITCH_WORKSPACE_ACTION);
+  if (choice === SWITCH_WORKSPACE_ACTION) {
+    await vscode.commands.executeCommand(SWITCH_WORKSPACE_COMMAND);
+  }
+}
+
 export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: ClaudeTerminalDeps): ClaudeTerminalHandle {
   const manager = new ClaudeTerminalManager(deps);
   const resolve = (arg: RefArgument): WorkspaceRef | undefined => {
@@ -264,6 +283,14 @@ export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: C
       if (target !== undefined) {
         await manager.resume(target);
       }
+    }),
+    vscode.commands.registerCommand('governedWorkflow.showTerminal', async () => {
+      const target = deps.activeWorkspace.workspace;
+      if (target === undefined) {
+        await offerWorkspacePicker();
+        return;
+      }
+      await manager.show(target);
     }),
     vscode.commands.registerCommand('governedWorkflow.startClaude', async (arg?: StartClaudeArgument) => {
       const options = isStartClaudeOptions(arg) ? arg : { ref: unwrapRef(arg) };
