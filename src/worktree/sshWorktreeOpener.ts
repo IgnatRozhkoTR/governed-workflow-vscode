@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { WorkspaceRef } from '../api/types';
+import type { NavTarget } from '../shared/navigation';
 import type { Settings } from '../config/settings';
 import { offerCompanion } from '../companions/companionPrompt';
 import type { CompanionPromptMemory } from '../companions/companionPromptMemory';
@@ -23,7 +24,7 @@ export interface SshWorktreeOpenerDeps {
 export class SshWorktreeOpener {
   constructor(private readonly deps: SshWorktreeOpenerDeps) {}
 
-  async open(ref: WorkspaceRef, worktreePath: string, behaviour: Exclude<OnSelectWorkspace, 'off'>): Promise<SshOpenOutcome> {
+  async open(ref: WorkspaceRef, worktreePath: string, behaviour: Exclude<OnSelectWorkspace, 'off'>, nav?: NavTarget): Promise<SshOpenOutcome> {
     const serverHostname = remoteServerHostname(this.deps.settings.serverUrl);
     if (vscode.env.remoteName !== undefined || serverHostname === undefined || worktreePath === '') {
       return 'unavailable';
@@ -33,7 +34,7 @@ export class SshWorktreeOpener {
     }
     const sshTarget = await resolveSshTarget(this.deps.settings.sshHost, serverHostname, this.deps.client);
     await ensureInstalledOnSshHosts(this.deps.extensionId);
-    await this.deps.handoff.offer(worktreePath, ref);
+    await this.deps.handoff.offer(worktreePath, ref, nav);
     await vscode.commands.executeCommand('vscode.openFolder', sshFolderUri(sshTarget, worktreePath), {
       forceNewWindow: opensSshInNewWindow(behaviour),
     });

@@ -9,8 +9,11 @@ const putContext = vi.fn();
 vi.mock('../../../webview-ui/src/api/settings', () => ({ putContext: (update: unknown) => putContext(update), searchPaths: vi.fn() }));
 vi.mock('../../../webview-ui/src/api/preplanning', () => ({ getContext: vi.fn() }));
 vi.mock('../../../webview-ui/src/tabs/settings/sections/useStartClaude', () => ({ useStartClaude: () => vi.fn() }));
+const navAnchor = vi.hoisted(() => ({ value: undefined as string | undefined }));
+
 vi.mock('../../../webview-ui/src/store/hooks', () => ({
   useWorkspaceState: () => ({ working_dir: '/w' }),
+  useStore: (select: (state: unknown) => unknown) => select({ nav: { tab: 'settings', anchor: navAnchor.value } }),
   useResource: () => ({
     data: { ticket_id: 'feature/x', ticket_name: 'Fix login', context: 'Long description', refs: ['src/a.ts'], discussions: [] },
     error: undefined,
@@ -23,6 +26,7 @@ vi.mock('../../../webview-ui/src/store/hooks', () => ({
 const { taskSection } = await import('../../../webview-ui/src/tabs/settings/sections/task');
 
 afterEach(() => {
+  navAnchor.value = undefined;
   cleanup();
   vi.clearAllMocks();
 });
@@ -32,6 +36,21 @@ function fieldByLabel(label: string): HTMLInputElement | HTMLTextAreaElement {
 }
 
 describe('task settings section', () => {
+  it('render_shouldFocusTicketName_whenNavTargetsTheTicketNameAnchor', () => {
+    navAnchor.value = 'ticket-name';
+    const Section = taskSection.Component;
+    render(<Section active />);
+
+    expect(document.activeElement).toBe(fieldByLabel('labels.ticketName'));
+  });
+
+  it('render_shouldNotFocusTicketName_whenNavHasNoAnchor', () => {
+    const Section = taskSection.Component;
+    render(<Section active />);
+
+    expect(document.activeElement).not.toBe(fieldByLabel('labels.ticketName'));
+  });
+
   it('render_shouldLoadTicketNameAndContextIntoTheirOwnFields', () => {
     const Section = taskSection.Component;
     render(<Section active />);

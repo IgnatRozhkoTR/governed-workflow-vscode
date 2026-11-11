@@ -14,7 +14,7 @@ const ARCHIVED_STATUS = 'archived';
 
 export class ProjectItem extends vscode.TreeItem {
   constructor(readonly project: Project) {
-    super(project.name, vscode.TreeItemCollapsibleState.Expanded);
+    super(project.name, vscode.TreeItemCollapsibleState.Collapsed);
     this.id = `project:${project.id}`;
     this.description = project.project_type;
     this.tooltip = project.path;

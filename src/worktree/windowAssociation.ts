@@ -31,7 +31,7 @@ export function registerWindowAssociation(context: vscode.ExtensionContext, deps
 async function associateWindow(deps: WindowAssociationDeps, folders: readonly string[]): Promise<void> {
   const handedOff = folders.length === 0 ? undefined : await deps.handoff.take(folders);
   if (handedOff !== undefined) {
-    await selectUnlessChosen(deps, () => deps.selector.selectInThisWindow(handedOff));
+    await selectUnlessChosen(deps, () => deps.selector.selectInThisWindow(handedOff.ref, handedOff.nav));
     return;
   }
   const ref = deps.memory.remembered() ?? (await lookupWorkspaceQuietly(deps.client, folders));

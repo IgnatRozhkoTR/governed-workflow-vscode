@@ -3,9 +3,10 @@ import type { JSX } from 'preact';
 import { getContext } from '../../../api/preplanning';
 import { putContext, searchPaths } from '../../../api/settings';
 import { Button, ChipInput, CodeRef, Collapsible, ResourceView, TextField, Toolbar, useDialogs, useToast } from '../../../components';
+import { TICKET_NAME_ANCHOR } from '@shared/navigation';
 import { useT } from '../../../i18n/i18n';
 import { rpc } from '../../../rpc/rpcClient';
-import { useMutation, useResource, useWorkspaceState } from '../../../store/hooks';
+import { useMutation, useResource, useStore, useWorkspaceState } from '../../../store/hooks';
 import type { SettingsSectionModule } from '../../types';
 import { Field, SectionShell, SubSection, useDraft } from './parts';
 import { SETTINGS_MESSAGES } from './settingsMessages';
@@ -48,6 +49,7 @@ function ClaudeActions(): JSX.Element {
 function ContextForm({ data }: { readonly data: WorkspaceContext }): JSX.Element {
   const t = useT();
   const [draft, setDraft] = useDraft(data);
+  const isTicketNameTargeted = useStore((s) => s.nav.anchor === TICKET_NAME_ANCHOR);
   const save = useMutation(putContext, { invalidates: TOPICS_AFTER_SAVE, successToast: t('messages.contextSaved') });
   const refs = draft.refs;
   const submit = async (): Promise<void> => {
@@ -61,7 +63,7 @@ function ContextForm({ data }: { readonly data: WorkspaceContext }): JSX.Element
           <TextField value={draft.ticket_id} onInput={() => undefined} disabled ariaLabel={t('labels.ticketId')} />
         </Field>
         <Field label={t('labels.ticketName')}>
-          <TextField value={draft.ticket_name} ariaLabel={t('labels.ticketName')} onInput={(value) => setDraft({ ...draft, ticket_name: value })} placeholder={t('placeholders.enterTicketName')} />
+          <TextField autoFocus={isTicketNameTargeted} value={draft.ticket_name} ariaLabel={t('labels.ticketName')} onInput={(value) => setDraft({ ...draft, ticket_name: value })} placeholder={t('placeholders.enterTicketName')} />
         </Field>
       </div>
       <Field label={t('labels.context')}>

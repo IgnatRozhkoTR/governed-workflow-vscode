@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {

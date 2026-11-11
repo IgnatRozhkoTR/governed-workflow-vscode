@@ -1,20 +1,25 @@
 import type * as vscode from 'vscode';
 import type { WorkspaceRef } from '../api/types';
+import { isNavTarget, type NavTarget } from '../shared/navigation';
 import { isWorkspaceRef } from './windowSelectionMemory';
 import { normalizeFsPath } from './worktreePaths';
 
 const HANDOFF_KEY = 'governedWorkflow.worktreeHandoff';
 export const HANDOFF_TTL_MS = 5 * 60 * 1000;
 
-export interface HandoffEntry {
+export interface HandedOff {
   readonly ref: WorkspaceRef;
+  readonly nav?: NavTarget;
+}
+
+export interface HandoffEntry extends HandedOff {
   readonly offeredAt: number;
 }
 
 export type HandoffEntries = Readonly<Record<string, HandoffEntry>>;
 
 export interface HandoffTake {
-  readonly ref: WorkspaceRef | undefined;
+  readonly handedOff: HandedOff | undefined;
   readonly remaining: HandoffEntries;
 }
 
@@ -22,18 +27,18 @@ export interface HandoffTake {
 export class WorktreeHandoff {
   constructor(private readonly globalState: vscode.Memento) {}
 
-  offer(folderPath: string, ref: WorkspaceRef, now = Date.now()): Thenable<void> {
-    return this.globalState.update(HANDOFF_KEY, withOffer(this.entries(), normalizeFsPath(folderPath), ref, now));
+  offer(folderPath: string, ref: WorkspaceRef, nav?: NavTarget, now = Date.now()): Thenable<void> {
+    return this.globalState.update(HANDOFF_KEY, withOffer(this.entries(), normalizeFsPath(folderPath), { ref, nav }, now));
   }
 
-  async take(folderPaths: readonly string[], now = Date.now()): Promise<WorkspaceRef | undefined> {
+  async take(folderPaths: readonly string[], now = Date.now()): Promise<HandedOff | undefined> {
     const entries = this.entries();
     if (Object.keys(entries).length === 0) {
       return undefined;
     }
     const taken = takeFrom(entries, folderPaths.map((folder) => normalizeFsPath(folder)), now);
     await this.globalState.update(HANDOFF_KEY, taken.remaining);
-    return taken.ref;
+    return taken.handedOff;
   }
 
   private entries(): HandoffEntries {
@@ -42,18 +47,20 @@ export class WorktreeHandoff {
   }
 }
 
-export function withOffer(entries: HandoffEntries, normalizedPath: string, ref: WorkspaceRef, now: number): HandoffEntries {
-  return { ...unexpired(entries, now), [normalizedPath]: { ref, offeredAt: now } };
+export function withOffer(entries: HandoffEntries, normalizedPath: string, offer: HandedOff, now: number): HandoffEntries {
+  const entry: HandoffEntry = offer.nav === undefined ? { ref: offer.ref, offeredAt: now } : { ref: offer.ref, nav: offer.nav, offeredAt: now };
+  return { ...unexpired(entries, now), [normalizedPath]: entry };
 }
 
 export function takeFrom(entries: HandoffEntries, normalizedPaths: readonly string[], now: number): HandoffTake {
   const live = unexpired(entries, now);
   const matchedPath = normalizedPaths.find((folderPath) => live[folderPath] !== undefined);
   if (matchedPath === undefined) {
-    return { ref: undefined, remaining: live };
+    return { handedOff: undefined, remaining: live };
   }
   const { [matchedPath]: matched, ...remaining } = live;
-  return { ref: matched.ref, remaining };
+  const { offeredAt, ...handedOff } = matched;
+  return { handedOff, remaining };
 }
 
 function unexpired(entries: HandoffEntries, now: number): HandoffEntries {
@@ -69,5 +76,5 @@ function isHandoffEntry(value: unknown): value is HandoffEntry {
     return false;
   }
   const candidate = value as Record<string, unknown>;
-  return isWorkspaceRef(candidate.ref) && typeof candidate.offeredAt === 'number';
+  return isWorkspaceRef(candidate.ref) && typeof candidate.offeredAt === 'number' && (candidate.nav === undefined || isNavTarget(candidate.nav));
 }

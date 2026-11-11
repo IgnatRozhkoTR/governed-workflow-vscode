@@ -98,6 +98,20 @@ export type ExtensionKind = (typeof ExtensionKind)[keyof typeof ExtensionKind];
 export const StatusBarAlignment = { Left: 1, Right: 2 } as const;
 export const CommentThreadState = { Unresolved: 0, Resolved: 1 } as const;
 export const CommentThreadCollapsibleState = { Collapsed: 0, Expanded: 1 } as const;
+export const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 } as const;
+export class TreeItem {
+  id?: string;
+  description?: string;
+  tooltip?: string;
+  contextValue?: string;
+  command?: unknown;
+  iconPath?: unknown;
+
+  constructor(readonly label: string, readonly collapsibleState: number = TreeItemCollapsibleState.None) {}
+}
+export class ThemeIcon {
+  constructor(readonly id: string) {}
+}
 export const CommentMode = { Editing: 0, Preview: 1 } as const;
 
 export interface FakeStatusBarItem {

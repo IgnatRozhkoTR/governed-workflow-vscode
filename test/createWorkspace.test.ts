@@ -134,7 +134,7 @@ describe('createWorkspace', () => {
 
     await runCreate();
 
-    expect(selector.select).toHaveBeenCalledWith({ projectId: 'proj', branch: 'feature/x' });
+    expect(selector.select).toHaveBeenCalledWith({ projectId: 'proj', branch: 'feature/x' }, { tab: 'settings', section: 'task', anchor: 'ticket-name' });
     expect(selector.selectInThisWindow).not.toHaveBeenCalled();
   });
 

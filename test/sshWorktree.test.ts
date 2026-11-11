@@ -12,6 +12,7 @@ import { opensSshInNewWindow, resolveSshTarget, sshFolderUri } from '../src/work
 import { SshWorktreeOpener } from '../src/worktree/sshWorktreeOpener';
 import { WorkspaceSelector } from '../src/worktree/workspaceSelector';
 import { WorktreeHandoff } from '../src/worktree/worktreeHandoff';
+import { NEW_WORKSPACE_NAV } from '../src/shared/navigation';
 import { makeState, memoryMemento } from './support/fixtures';
 import { ConfigurationTarget, ExtensionKind, commands, env, extensions, window, workspace } from './vscodeStub';
 
@@ -188,8 +189,33 @@ describe('WorkspaceSelector.select', () => {
       options: { forceNewWindow: true },
     });
     expect(configuration.update).toHaveBeenCalledWith('defaultExtensionsIfInstalledLocally', [EXTENSION_ID], ConfigurationTarget.Global);
-    expect(await handoff.take([WORKTREE])).toEqual(REF);
+    expect(await handoff.take([WORKTREE])).toEqual({ ref: REF });
     expect(active.select).not.toHaveBeenCalled();
+  });
+
+  it('select_shouldHandOffTheNavIntent_whenOpeningOverSsh', async () => {
+    remoteSettings([]);
+    const { selector, handoff } = selectorFor();
+
+    await selector.select(REF, NEW_WORKSPACE_NAV);
+
+    expect(await handoff.take([WORKTREE])).toEqual({ ref: REF, nav: NEW_WORKSPACE_NAV });
+  });
+
+  it('select_shouldHandOffTheNavIntent_whenOpeningLocalFolderInNewWindow', async () => {
+    const { selector, handoff } = selectorFor({ isLocal: true });
+
+    await selector.select(REF, NEW_WORKSPACE_NAV);
+
+    expect(await handoff.take([WORKTREE])).toEqual({ ref: REF, nav: NEW_WORKSPACE_NAV });
+  });
+
+  it('select_shouldOpenThePanelOnTheNavDirectly_whenSelectionStaysInThisWindow', async () => {
+    const { selector } = selectorFor({ behaviour: 'off' });
+
+    await selector.select(REF, NEW_WORKSPACE_NAV);
+
+    expect(commands.executeCommand).toHaveBeenCalledWith('governedWorkflow.openControlPanel', NEW_WORKSPACE_NAV);
   });
 
   it('select_shouldReuseThisWindowForSsh_whenSameWindowIsConfigured', async () => {

@@ -14,6 +14,7 @@ import type { TokenStore } from '../config/tokenStore';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import { remoteFileUriParts } from '../fs/uris';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
+import { NEW_WORKSPACE_NAV } from '../shared/navigation';
 import type { ProjectsTreeProvider } from '../views/projectsTree';
 import type { WorkspaceSelector } from '../worktree/workspaceSelector';
 import { unwrapRef, type RefArgument } from './refArgument';
@@ -149,7 +150,7 @@ async function createWorkspace(deps: WorkspaceCommandDeps, preselected: Project 
   notifyBaseSync(response.base_sync, response.branch);
   response.attached_repos?.forEach((repo) => notifyBaseSync(repo.base_sync, repo.rel_path));
   deps.projectsTree.refresh();
-  await deps.selector.select(ref);
+  await deps.selector.select(ref, NEW_WORKSPACE_NAV);
   await offerResume(ref);
 }
 

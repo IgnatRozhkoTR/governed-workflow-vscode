@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { ApiClient } from '../api/client';
 import { ApiError } from '../api/errors';
 import type { WorkspaceRef, WorkspaceState } from '../api/types';
+import type { NavTarget } from '../shared/navigation';
 import type { Settings } from '../config/settings';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
@@ -29,38 +30,38 @@ export class WorkspaceSelector {
 
   constructor(private readonly deps: WorkspaceSelectorDeps) {}
 
-  async select(ref: WorkspaceRef): Promise<void> {
+  async select(ref: WorkspaceRef, nav?: NavTarget): Promise<void> {
     const behaviour = this.deps.settings.onSelectWorkspace;
     const state = behaviour === 'off' ? undefined : await this.fetchState(ref);
     if (behaviour === 'off' || state === undefined) {
-      await this.selectInThisWindow(ref);
+      await this.selectInThisWindow(ref, nav);
     } else if (this.deps.locator.isLocal(state)) {
-      await this.openLocalWorktree(behaviour, ref, state.working_dir);
+      await this.openLocalWorktree(behaviour, ref, state.working_dir, nav);
     } else {
-      await this.openRemoteWorktree(behaviour, ref, state.working_dir);
+      await this.openRemoteWorktree(behaviour, ref, state.working_dir, nav);
     }
   }
 
-  async selectInThisWindow(ref: WorkspaceRef): Promise<void> {
+  async selectInThisWindow(ref: WorkspaceRef, nav?: NavTarget): Promise<void> {
     this.deps.active.select(ref);
-    await vscode.commands.executeCommand(OPEN_CONTROL_PANEL_COMMAND);
+    await vscode.commands.executeCommand(OPEN_CONTROL_PANEL_COMMAND, nav);
   }
 
-  private async openLocalWorktree(behaviour: OpeningBehaviour, ref: WorkspaceRef, workingDir: string): Promise<void> {
+  private async openLocalWorktree(behaviour: OpeningBehaviour, ref: WorkspaceRef, workingDir: string, nav?: NavTarget): Promise<void> {
     if (isWindowOnWorktree(windowFolderPaths(), workingDir)) {
-      await this.selectInThisWindow(ref);
+      await this.selectInThisWindow(ref, nav);
       return;
     }
-    await this.openWorktree(behaviour, ref, workingDir);
+    await this.openWorktree(behaviour, ref, workingDir, nav);
   }
 
-  private async openRemoteWorktree(behaviour: OpeningBehaviour, ref: WorkspaceRef, worktreePath: string): Promise<void> {
-    const outcome = await this.deps.sshOpener.open(ref, worktreePath, behaviour);
+  private async openRemoteWorktree(behaviour: OpeningBehaviour, ref: WorkspaceRef, worktreePath: string, nav?: NavTarget): Promise<void> {
+    const outcome = await this.deps.sshOpener.open(ref, worktreePath, behaviour, nav);
     if (outcome === 'opened') {
       return;
     }
     this.explainRemoteWorktree(ref, outcome);
-    await this.selectInThisWindow(ref);
+    await this.selectInThisWindow(ref, nav);
   }
 
   // An unreachable panel or a missing token still selects the workspace: the panel's connection banner reports the same error.
@@ -90,35 +91,35 @@ export class WorkspaceSelector {
     );
   }
 
-  private async openWorktree(behaviour: OpeningBehaviour, ref: WorkspaceRef, workingDir: string): Promise<void> {
+  private async openWorktree(behaviour: OpeningBehaviour, ref: WorkspaceRef, workingDir: string, nav?: NavTarget): Promise<void> {
     switch (behaviour) {
       case 'newWindow':
-        await this.openFolder(ref, workingDir, true);
+        await this.openFolder(ref, workingDir, true, nav);
         return;
       case 'sameWindow':
-        await this.openFolder(ref, workingDir, false);
+        await this.openFolder(ref, workingDir, false, nav);
         return;
       case 'addFolder':
-        await this.addFolder(ref, workingDir);
+        await this.addFolder(ref, workingDir, nav);
         return;
     }
   }
 
-  private async openFolder(ref: WorkspaceRef, workingDir: string, isNewWindow: boolean): Promise<void> {
-    await this.deps.handoff.offer(workingDir, ref);
+  private async openFolder(ref: WorkspaceRef, workingDir: string, isNewWindow: boolean, nav?: NavTarget): Promise<void> {
+    await this.deps.handoff.offer(workingDir, ref, nav);
     await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workingDir), { forceNewWindow: isNewWindow });
   }
 
-  private async addFolder(ref: WorkspaceRef, workingDir: string): Promise<void> {
+  private async addFolder(ref: WorkspaceRef, workingDir: string, nav?: NavTarget): Promise<void> {
     const folderCount = vscode.workspace.workspaceFolders?.length ?? 0;
     // Adding the first folder to an empty window restarts the extension host, so the selection must survive it.
     if (folderCount === 0) {
-      await this.deps.handoff.offer(workingDir, ref);
+      await this.deps.handoff.offer(workingDir, ref, nav);
     }
     const isAdded = vscode.workspace.updateWorkspaceFolders(folderCount, 0, { uri: vscode.Uri.file(workingDir), name: ref.branch });
     if (!isAdded) {
       void vscode.window.showWarningMessage(`Could not add the worktree of ${ref.branch} to this window.`);
     }
-    await this.selectInThisWindow(ref);
+    await this.selectInThisWindow(ref, nav);
   }
 }

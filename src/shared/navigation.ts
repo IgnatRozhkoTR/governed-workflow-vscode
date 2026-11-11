@@ -34,6 +34,10 @@ export const TOPICS: readonly Topic[] = [
 // With nothing waiting on the user, a workspace opens on how the ticket is progressing rather than on its settings.
 export const DEFAULT_NAV: NavTarget = { tab: 'progress' };
 
+export const TICKET_NAME_ANCHOR = 'ticket-name';
+// A new workspace has no ticket yet, so it opens on the task section with the ticket name ready to type.
+export const NEW_WORKSPACE_NAV: NavTarget = { tab: 'settings', section: 'task', anchor: TICKET_NAME_ANCHOR };
+
 export const PLAN_APPROVAL_NAV: NavTarget = { tab: 'planning', anchor: 'plan-execution' };
 // The Review tab's blocking-threads banner; arriving there expands its list.
 export const REVIEW_BLOCKING_NAV: NavTarget = { tab: 'review', anchor: 'review-blocking' };
