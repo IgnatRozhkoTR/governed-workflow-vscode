@@ -52,8 +52,8 @@ export interface BranchList {
 
 export interface CreateWorkspaceRequest {
   branch: string;
-  source: string;
-  worktree: boolean;
+  source?: string;
+  worktree?: boolean;
   workflow_mode?: string;
   review_mode?: string;
   yolo_mode?: boolean;
