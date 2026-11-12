@@ -7,7 +7,7 @@ A VS Code client for [Governed Workflow](https://github.com/IgnatRozhkoTR/govern
 - Open any workspace in the **Workspace Control** panel, an editor tab with the same tabs as the web panel: pre-planning, planning, research, phase control, code changes, review, progress, reflection, scratchpads and settings.
 - Approve or reject the current user gate and the plan, set the phase, toggle YOLO mode and notify Claude from the panel, the sidebar or the status bar.
 - Comment anywhere. Comments on plan items, scope, findings and criteria live in the panel. Code comments sit on lines in the editor and the diff editor, on files and folders from the explorer, and in the Comments view. All of them are the same threads the web panel and the agents see.
-- Review the branch diff in VS Code's native diff editor.
+- Review the branch diff in VS Code's native diff editor, from the **Changes** view in the sidebar or the panel's Changes tab.
 - Create projects and workspaces, run project setup, archive workspaces and remove projects.
 - Run the workspace's Claude Code session in a full-size editor terminal, attach images to it, and manage the panel's other terminal sessions.
 
@@ -18,6 +18,12 @@ Selecting a workspace in **Projects** opens the panel and keeps it on that works
 The panel follows the VS Code theme and the workspace locale. Its strings come from the admin panel, so the RU translation matches the web. The panel stays alive in the background and survives window reloads.
 
 Native features stay native. Opening a file, a diff, a terminal or the worktree from the panel uses the editor, not a copy of it.
+
+## Changes view
+
+The **Changes** view in the Governed Workflow sidebar lists the files the active workspace changed, either on the branch against its source branch (default) or uncommitted. The title bar switches between the two, switches between a folder tree (default, with single-child folder chains merged as in Source Control) and a flat list, refreshes, and opens all changes in the multi-file diff editor. Multi-repo workspaces get one group per repository. Each file shows its status letter and colour and its added and removed line counts, and the view's badge counts the changed files. Mode and layout are remembered per window.
+
+Clicking a file opens its diff in the editor group you last used, replacing that group's preview tab, so with a split editor one side keeps your code and the other shows the diff. Diffs opened from the Control Panel's Changes tab follow the same rule. The context menu opens the working file or copies its path. The view loads only while it is visible and reloads when the workspace or its state changes.
 
 ## Picking a workspace opens its worktree
 

@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import { ApiError } from '../api/errors';
-import type { DiffFile, DiffMode, DiffResponse, WorkspaceRef, WorkspaceState } from '../api/types';
+import type { DiffFile, WorkspaceRef, WorkspaceState } from '../api/types';
 import { baseFileUriParts } from '../fs/uris';
 import { joinRepoPath } from '../shared/paths';
 import type { ChangeKind, DiffFileRef, DiffSource, OpenAllChangesArgs, OpenDiffArgs } from '../shared/protocol';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
-import type { StatePoller } from '../state/statePoller';
 
 export const EMPTY_DOCUMENT_SCHEME = 'gw-empty';
 const UNCOMMITTED_BASE_REF = 'HEAD';
@@ -20,18 +19,9 @@ const SHORT_SHA_LENGTH = 8;
 
 export type { ChangeKind };
 
-export interface ActiveWorkspaceSource {
-  readonly poller: StatePoller | undefined;
-  readonly onDidChange: vscode.Event<unknown>;
-}
-
 export interface WorkspaceSnapshot {
   readonly workspace: WorkspaceRef;
   readonly state: WorkspaceState;
-}
-
-export interface DiffContext extends WorkspaceSnapshot {
-  readonly baseRef: string;
 }
 
 interface DiffRefs {
@@ -42,42 +32,13 @@ interface DiffRefs {
 
 type DiffResources = [resource: vscode.Uri, left: vscode.Uri, right: vscode.Uri];
 
-export class ActiveStateTracker implements vscode.Disposable {
-  private readonly changeEmitter = new vscode.EventEmitter<void>();
-  private readonly activeListener: vscode.Disposable;
-  private pollerListener: vscode.Disposable | undefined;
-  private latest: WorkspaceSnapshot | undefined;
-
-  readonly onDidChange: vscode.Event<void> = this.changeEmitter.event;
-
-  constructor(private readonly source: ActiveWorkspaceSource) {
-    this.activeListener = source.onDidChange(() => this.follow());
-    this.follow();
-  }
-
-  get snapshot(): WorkspaceSnapshot | undefined {
-    return this.latest;
-  }
-
-  dispose(): void {
-    this.activeListener.dispose();
-    this.pollerListener?.dispose();
-    this.changeEmitter.dispose();
-  }
-
-  private follow(): void {
-    this.pollerListener?.dispose();
-    this.latest = undefined;
-    const poller = this.source.poller;
-    this.pollerListener = poller?.onDidChange((state) => this.publish({ workspace: poller.workspace, state }));
-    this.changeEmitter.fire();
-  }
-
-  private publish(snapshot: WorkspaceSnapshot): void {
-    this.latest = snapshot;
-    this.changeEmitter.fire();
-  }
-}
+// Diffs open in the editor group the user last focused and reuse its preview tab, so a split layout keeps
+// one group for code and the other for the diff under review.
+export const DIFF_SHOW_OPTIONS: vscode.TextDocumentShowOptions = {
+  viewColumn: vscode.ViewColumn.Active,
+  preview: true,
+  preserveFocus: false,
+};
 
 export function changeKindOf(file: DiffFile): ChangeKind {
   if (file.status === ADDED_STATUS || ADDED_MARKER.test(file.diff)) {
@@ -89,30 +50,8 @@ export function changeKindOf(file: DiffFile): ChangeKind {
   return file.old_path ? 'renamed' : 'modified';
 }
 
-export function resolveBaseRef(mode: DiffMode, response: DiffResponse, state: WorkspaceState): string {
-  if (mode === 'uncommitted') {
-    return UNCOMMITTED_BASE_REF;
-  }
-  return requireBaseRef(response.base ?? state.source_branch);
-}
-
-export function workspaceSideUri(locator: WorkspaceLocator, context: DiffContext, file: DiffFile): vscode.Uri {
-  return locator.fileUri(context.workspace, context.state, file.path);
-}
-
-export async function openFileDiff(locator: WorkspaceLocator, context: DiffContext, file: DiffFile): Promise<void> {
-  const [, left, right] = diffSides(locator, context, file);
-  const title = `${file.path} (${sidesLabel(context.baseRef)})`;
-  await vscode.commands.executeCommand('vscode.diff', left, right, title);
-}
-
-export async function openAllChanges(
-  locator: WorkspaceLocator,
-  context: DiffContext,
-  files: readonly DiffFile[],
-): Promise<void> {
-  const title = `${context.workspace.branch} (${sidesLabel(context.baseRef)})`;
-  await showChangesEditor(title, files.map((file) => diffSides(locator, context, file)));
+export function toDiffFileRef(file: DiffFile): DiffFileRef {
+  return { path: file.path, oldPath: file.old_path, kind: changeKindOf(file) };
 }
 
 async function showChangesEditor(title: string, resources: readonly DiffResources[]): Promise<void> {
@@ -131,17 +70,24 @@ export async function openDiffFor(locator: WorkspaceLocator, snapshot: Workspace
   const refs = diffRefsFor(args.source, snapshot.state);
   const [, left, right] = sidesFor(locator, snapshot, refs, args.file);
   const title = `${args.file.path} (${sidesLabel(refs.leftRef, refs.rightRef)})`;
-  await vscode.commands.executeCommand('vscode.diff', left, right, title);
+  await vscode.commands.executeCommand('vscode.diff', left, right, title, DIFF_SHOW_OPTIONS);
 }
 
-export async function openAllChangesFor(
+export function openAllChangesFor(locator: WorkspaceLocator, snapshot: WorkspaceSnapshot, args: OpenAllChangesArgs): Promise<void> {
+  return openAllChangesAcross(locator, snapshot, [args]);
+}
+
+// The multi-diff editor opens in the active editor group; it takes no show options.
+export async function openAllChangesAcross(
   locator: WorkspaceLocator,
   snapshot: WorkspaceSnapshot,
-  args: OpenAllChangesArgs,
+  groups: readonly OpenAllChangesArgs[],
 ): Promise<void> {
-  const refs = diffRefsFor(args.source, snapshot.state);
-  const title = `${snapshot.workspace.branch} (${sidesLabel(refs.leftRef, refs.rightRef)})`;
-  await showChangesEditor(title, args.files.map((file) => sidesFor(locator, snapshot, refs, file)));
+  const refsByGroup = groups.map((group) => ({ group, refs: diffRefsFor(group.source, snapshot.state) }));
+  const labels = [...new Set(refsByGroup.map(({ refs }) => sidesLabel(refs.leftRef, refs.rightRef)))];
+  const title = `${snapshot.workspace.branch} (${labels.join('; ')})`;
+  const resources = refsByGroup.flatMap(({ group, refs }) => group.files.map((file) => sidesFor(locator, snapshot, refs, file)));
+  await showChangesEditor(title, resources);
 }
 
 export function registerEmptyDocumentProvider(): vscode.Disposable {
@@ -158,11 +104,6 @@ export async function runWithErrorMessage(action: () => Promise<void>): Promise<
     }
     void vscode.window.showErrorMessage(error.message);
   }
-}
-
-function diffSides(locator: WorkspaceLocator, context: DiffContext, file: DiffFile): DiffResources {
-  const fileRef: DiffFileRef = { path: file.path, oldPath: file.old_path, kind: changeKindOf(file) };
-  return sidesFor(locator, context, { leftRef: context.baseRef }, fileRef);
 }
 
 function diffRefsFor(source: DiffSource, state: WorkspaceState): DiffRefs {

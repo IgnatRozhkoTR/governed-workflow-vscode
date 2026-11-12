@@ -2,214 +2,374 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { ApiClient } from '../api/client';
 import { ApiError } from '../api/errors';
-import type { DiffFile, DiffMode } from '../api/types';
+import type { DiffRepo, WorkspaceRef, WorkspaceState } from '../api/types';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
+import type { ChangeKind, OpenAllChangesArgs } from '../shared/protocol';
+import { ChangeDecorationProvider, changeResourceUri } from './changeDecorations';
 import {
-  ActiveStateTracker,
-  changeKindOf,
-  openAllChanges,
-  openFileDiff,
+  buildChangeNodes,
+  countChangedFiles,
+  type ChangeFileNode,
+  type ChangeFolderNode,
+  type ChangeNode,
+  type ChangeRepoNode,
+  type ChangesLayout,
+  type RepoChanges,
+  type WorkingTreeMode,
+} from './changesModel';
+import { ChangesViewMemory } from './changesViewMemory';
+import {
+  DIFF_SHOW_OPTIONS,
+  openAllChangesAcross,
+  openDiffFor,
   registerEmptyDocumentProvider,
-  resolveBaseRef,
   runWithErrorMessage,
-  workspaceSideUri,
-  type ActiveWorkspaceSource,
-  type ChangeKind,
-  type DiffContext,
+  toDiffFileRef,
   type WorkspaceSnapshot,
 } from './diffView';
 
 export const CHANGES_VIEW_ID = 'governedWorkflow.changes';
 export const OPEN_FILE_DIFF_COMMAND = 'governedWorkflow.openFileDiff';
 export const OPEN_CHANGES_COMMAND = 'governedWorkflow.openChanges';
-export const TOGGLE_CHANGES_MODE_COMMAND = 'governedWorkflow.changes.toggleMode';
+export const SHOW_BRANCH_CHANGES_COMMAND = 'governedWorkflow.changes.showBranch';
+export const SHOW_UNCOMMITTED_CHANGES_COMMAND = 'governedWorkflow.changes.showUncommitted';
+export const VIEW_CHANGES_AS_TREE_COMMAND = 'governedWorkflow.changes.viewAsTree';
+export const VIEW_CHANGES_AS_LIST_COMMAND = 'governedWorkflow.changes.viewAsList';
 export const REFRESH_CHANGES_COMMAND = 'governedWorkflow.changes.refresh';
-const CHANGE_ITEM_CONTEXT = 'gwChange';
-const REPO_REQUIRED_CODE = 'repo_required';
-const MULTI_REPO_MESSAGE = 'this multi-repo workspace needs a repository choice, which the Changes view does not support yet.';
+export const OPEN_CHANGED_FILE_COMMAND = 'governedWorkflow.changes.openFile';
+export const COPY_CHANGED_PATH_COMMAND = 'governedWorkflow.changes.copyPath';
+const MODE_CONTEXT_KEY = 'governedWorkflow.changes.mode';
+const LAYOUT_CONTEXT_KEY = 'governedWorkflow.changes.layout';
+const LOADED_CONTEXT_KEY = 'governedWorkflow.changes.loaded';
+const FILE_CONTEXT = 'gwChangeFile';
+const DELETED_FILE_CONTEXT = 'gwChangeFileDeleted';
+const FOLDER_CONTEXT = 'gwChangeFolder';
+const ROOT_REPO = '.';
 
-const STATUS_LETTERS: Readonly<Record<ChangeKind, string>> = { added: 'A', deleted: 'D', renamed: 'R', modified: 'M' };
+const KIND_LABELS: Readonly<Record<ChangeKind, string>> = { added: 'Added', modified: 'Modified', deleted: 'Deleted', renamed: 'Renamed' };
+
+export interface ChangesWorkspaceSource {
+  readonly ref: WorkspaceRef | undefined;
+  readonly state: WorkspaceState | undefined;
+  readonly onDidChange: vscode.Event<unknown>;
+  readonly onDidChangeState: vscode.Event<WorkspaceState>;
+}
 
 export interface ChangesTreeDeps {
   readonly client: ApiClient;
   readonly locator: WorkspaceLocator;
-  readonly active: ActiveWorkspaceSource;
-}
-
-export interface ChangeEntry {
-  readonly type: 'change';
-  readonly file: DiffFile;
-  readonly kind: ChangeKind;
-  readonly context: DiffContext;
+  readonly active: ChangesWorkspaceSource;
 }
 
 interface MessageNode {
   readonly type: 'message';
+  readonly id: string;
   readonly text: string;
 }
 
-type ChangesNode = ChangeEntry | MessageNode;
+export type ChangesTreeNode = ChangeNode | MessageNode;
 
-interface LoadedDiff {
-  readonly context: DiffContext;
-  readonly files: readonly DiffFile[];
-}
+type LoadedChanges =
+  | { readonly status: 'idle' }
+  | { readonly status: 'loaded'; readonly repos: readonly RepoChanges[] }
+  | { readonly status: 'failed'; readonly message: string };
 
-export class ChangesTreeProvider implements vscode.TreeDataProvider<ChangesNode>, vscode.Disposable {
+const IDLE: LoadedChanges = { status: 'idle' };
+
+export class ChangesTreeProvider implements vscode.TreeDataProvider<ChangesTreeNode>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
-  private readonly trackerListener: vscode.Disposable;
-  private nodes: ChangesNode[] = [];
-  private loaded: LoadedDiff | undefined;
-  private mode: DiffMode = 'branch';
+  private readonly subscriptions: vscode.Disposable[];
+  private loaded: LoadedChanges = IDLE;
+  private roots: ChangesTreeNode[] = [];
+  private isVisible = false;
+  private isStale = true;
   private loadSequence = 0;
 
   readonly onDidChangeTreeData: vscode.Event<void> = this.changeEmitter.event;
 
   constructor(
     private readonly client: ApiClient,
-    private readonly locator: WorkspaceLocator,
-    private readonly tracker: ActiveStateTracker,
+    private readonly active: ChangesWorkspaceSource,
+    private readonly memory: ChangesViewMemory,
   ) {
-    this.trackerListener = tracker.onDidChange(() => void this.reload());
+    this.subscriptions = [
+      active.onDidChange(() => this.followWorkspaceSwitch()),
+      active.onDidChangeState(() => this.invalidate()),
+    ];
   }
 
-  get currentMode(): DiffMode {
-    return this.mode;
+  get mode(): WorkingTreeMode {
+    return this.memory.mode;
   }
 
-  get currentDiff(): LoadedDiff | undefined {
-    return this.loaded;
+  get layout(): ChangesLayout {
+    return this.memory.layout;
+  }
+
+  get isLoaded(): boolean {
+    return this.loaded.status === 'loaded';
+  }
+
+  get fileCount(): number {
+    return this.loaded.status === 'loaded' ? countChangedFiles(this.loaded.repos) : 0;
   }
 
   get summary(): string {
     if (this.mode === 'uncommitted') {
       return 'uncommitted';
     }
-    return this.loaded ? `branch vs ${this.loaded.context.baseRef}` : 'branch';
+    const bases = this.loaded.status === 'loaded' ? distinctBases(this.loaded.repos) : [];
+    return bases.length === 0 ? 'branch' : `vs ${bases.join(', ')}`;
   }
 
-  getTreeItem(node: ChangesNode): vscode.TreeItem {
-    return node.type === 'change' ? this.changeItem(node) : new vscode.TreeItem(node.text);
+  get changeGroups(): OpenAllChangesArgs[] {
+    const repos = this.loaded.status === 'loaded' ? this.loaded.repos : [];
+    return repos
+      .filter((entry) => entry.files.length > 0)
+      .map((entry) => ({ source: entry.source, files: entry.files.map(toDiffFileRef) }));
   }
 
-  getChildren(node?: ChangesNode): ChangesNode[] {
-    return node === undefined ? this.nodes : [];
+  getTreeItem(node: ChangesTreeNode): vscode.TreeItem {
+    return changeTreeItem(node);
   }
 
-  async toggleMode(): Promise<void> {
-    this.mode = this.mode === 'branch' ? 'uncommitted' : 'branch';
-    await this.reload();
+  getChildren(node?: ChangesTreeNode): ChangesTreeNode[] {
+    if (node === undefined) {
+      return this.roots;
+    }
+    return node.type === 'repo' || node.type === 'folder' ? [...node.children] : [];
+  }
+
+  setVisible(isVisible: boolean): void {
+    this.isVisible = isVisible;
+    this.reloadIfStaleAndVisible();
+  }
+
+  invalidate(): void {
+    this.isStale = true;
+    this.reloadIfStaleAndVisible();
+  }
+
+  async setMode(mode: WorkingTreeMode): Promise<void> {
+    await this.memory.setMode(mode);
+    this.loadSequence++;
+    this.show(IDLE);
+    this.invalidate();
+  }
+
+  async setLayout(layout: ChangesLayout): Promise<void> {
+    await this.memory.setLayout(layout);
+    this.show(this.loaded);
   }
 
   async reload(): Promise<void> {
     const sequence = ++this.loadSequence;
-    const snapshot = this.tracker.snapshot;
-    const loaded = snapshot === undefined ? undefined : await this.tryLoad(snapshot);
-    if (sequence !== this.loadSequence) {
-      return;
+    this.isStale = false;
+    const workspace = this.active.ref;
+    const loaded = workspace === undefined ? IDLE : await this.loadWithProgress(workspace, this.mode);
+    if (sequence === this.loadSequence) {
+      this.show(loaded);
     }
-    this.loaded = loaded instanceof ApiError ? undefined : loaded;
-    this.nodes = toNodes(loaded);
-    this.changeEmitter.fire();
   }
 
   dispose(): void {
-    this.trackerListener.dispose();
+    this.subscriptions.forEach((subscription) => subscription.dispose());
     this.changeEmitter.dispose();
   }
 
-  private async tryLoad(snapshot: WorkspaceSnapshot): Promise<LoadedDiff | ApiError> {
+  private followWorkspaceSwitch(): void {
+    this.loadSequence++;
+    this.show(IDLE);
+    this.invalidate();
+  }
+
+  private reloadIfStaleAndVisible(): void {
+    if (this.isVisible && this.isStale) {
+      void this.reload();
+    }
+  }
+
+  private show(loaded: LoadedChanges): void {
+    this.loaded = loaded;
+    this.roots = rootNodesFor(loaded, this.layout);
+    this.changeEmitter.fire();
+  }
+
+  private loadWithProgress(workspace: WorkspaceRef, mode: WorkingTreeMode): Thenable<LoadedChanges> {
+    return vscode.window.withProgress({ location: { viewId: CHANGES_VIEW_ID } }, () => this.fetchChanges(workspace, mode));
+  }
+
+  private async fetchChanges(workspace: WorkspaceRef, mode: WorkingTreeMode): Promise<LoadedChanges> {
     try {
-      const response = await this.client.getDiff(snapshot.workspace, { mode: this.mode });
-      const baseRef = resolveBaseRef(this.mode, response, snapshot.state);
-      return { context: { ...snapshot, baseRef }, files: response.files };
+      const repos = await this.client.listRepos(workspace);
+      return { status: 'loaded', repos: await Promise.all(repos.map((entry) => this.fetchRepo(workspace, mode, entry))) };
     } catch (error) {
       if (error instanceof ApiError) {
-        return error.code === REPO_REQUIRED_CODE ? new ApiError(error.status, error.code, MULTI_REPO_MESSAGE) : error;
+        return { status: 'failed', message: error.message };
       }
       throw error;
     }
   }
 
-  private changeItem(entry: ChangeEntry): vscode.TreeItem {
-    const item = new vscode.TreeItem(path.posix.basename(entry.file.path));
-    item.resourceUri = workspaceSideUri(this.locator, entry.context, entry.file);
-    item.description = describeChange(entry);
-    item.tooltip = entry.file.old_path ? `${entry.file.old_path} → ${entry.file.path}` : entry.file.path;
-    item.contextValue = CHANGE_ITEM_CONTEXT;
-    item.command = { command: OPEN_FILE_DIFF_COMMAND, title: 'Open Diff', arguments: [entry] };
-    return item;
+  private async fetchRepo(workspace: WorkspaceRef, mode: WorkingTreeMode, entry: DiffRepo): Promise<RepoChanges> {
+    const repo = entry.path === ROOT_REPO ? undefined : entry.path;
+    const response = await this.client.getDiff(workspace, { mode, repo: entry.path });
+    const base = mode === 'branch' ? response.base : undefined;
+    return { repo, name: entry.name, source: { mode, base, repo }, files: response.files };
   }
 }
 
 export function registerChangesTree(context: vscode.ExtensionContext, deps: ChangesTreeDeps): ChangesTreeProvider {
-  const tracker = new ActiveStateTracker(deps.active);
-  const provider = new ChangesTreeProvider(deps.client, deps.locator, tracker);
-  const treeView = vscode.window.createTreeView(CHANGES_VIEW_ID, { treeDataProvider: provider });
+  const provider = new ChangesTreeProvider(deps.client, deps.active, new ChangesViewMemory(context.workspaceState));
+  const treeView = vscode.window.createTreeView(CHANGES_VIEW_ID, { treeDataProvider: provider, showCollapseAll: true });
   context.subscriptions.push(
-    tracker,
     provider,
     treeView,
+    vscode.window.registerFileDecorationProvider(new ChangeDecorationProvider()),
     registerEmptyDocumentProvider(),
-    provider.onDidChangeTreeData(() => (treeView.description = provider.summary)),
-    ...registerChangesCommands(deps.locator, provider, treeView),
+    provider.onDidChangeTreeData(() => presentView(treeView, provider)),
+    treeView.onDidChangeVisibility((event) => provider.setVisible(event.visible)),
+    ...registerChangesCommands({ locator: deps.locator, active: deps.active, provider }),
   );
+  presentView(treeView, provider);
+  provider.setVisible(treeView.visible);
   return provider;
 }
 
-function registerChangesCommands(
-  locator: WorkspaceLocator,
-  provider: ChangesTreeProvider,
-  treeView: vscode.TreeView<ChangesNode>,
-): vscode.Disposable[] {
+export interface ChangesCommandDeps {
+  readonly locator: WorkspaceLocator;
+  readonly active: ChangesWorkspaceSource;
+  readonly provider: ChangesTreeProvider;
+}
+
+function registerChangesCommands(deps: ChangesCommandDeps): vscode.Disposable[] {
+  const { provider } = deps;
   return [
-    vscode.commands.registerCommand(OPEN_FILE_DIFF_COMMAND, (entry?: ChangeEntry) =>
-      runWithErrorMessage(() => openSelectedDiff(locator, entry ?? selectedEntry(treeView))),
-    ),
-    vscode.commands.registerCommand(OPEN_CHANGES_COMMAND, () =>
-      runWithErrorMessage(() => openLoadedChanges(locator, provider)),
-    ),
-    vscode.commands.registerCommand(TOGGLE_CHANGES_MODE_COMMAND, () => provider.toggleMode()),
+    registerFileCommand(OPEN_FILE_DIFF_COMMAND, (node) => openChangeDiff(deps, node)),
+    registerFileCommand(OPEN_CHANGED_FILE_COMMAND, (node) => openChangedFile(deps, node)),
+    registerFileCommand(COPY_CHANGED_PATH_COMMAND, (node) => copyChangedPath(deps, node)),
+    vscode.commands.registerCommand(OPEN_CHANGES_COMMAND, () => runWithErrorMessage(() => openAllLoadedChanges(deps))),
+    vscode.commands.registerCommand(SHOW_BRANCH_CHANGES_COMMAND, () => provider.setMode('branch')),
+    vscode.commands.registerCommand(SHOW_UNCOMMITTED_CHANGES_COMMAND, () => provider.setMode('uncommitted')),
+    vscode.commands.registerCommand(VIEW_CHANGES_AS_TREE_COMMAND, () => provider.setLayout('tree')),
+    vscode.commands.registerCommand(VIEW_CHANGES_AS_LIST_COMMAND, () => provider.setLayout('list')),
     vscode.commands.registerCommand(REFRESH_CHANGES_COMMAND, () => provider.reload()),
   ];
 }
 
-async function openSelectedDiff(locator: WorkspaceLocator, entry: ChangeEntry | undefined): Promise<void> {
-  if (entry === undefined) {
-    void vscode.window.showInformationMessage('Select a changed file in the Changes view first.');
+function registerFileCommand(command: string, action: (node: ChangeFileNode) => Promise<void>): vscode.Disposable {
+  return vscode.commands.registerCommand(command, (node?: ChangesTreeNode) => {
+    if (node?.type !== 'file') {
+      void vscode.window.showInformationMessage('Select a changed file in the Changes view first.');
+      return;
+    }
+    return runWithErrorMessage(() => action(node));
+  });
+}
+
+export function openChangeDiff(deps: ChangesCommandDeps, node: ChangeFileNode): Promise<void> {
+  return openDiffFor(deps.locator, requireSnapshot(deps.active), { source: node.source, file: toDiffFileRef(node.file) });
+}
+
+export async function openAllLoadedChanges(deps: ChangesCommandDeps): Promise<void> {
+  const groups = deps.provider.changeGroups;
+  if (groups.length === 0) {
+    void vscode.window.showInformationMessage('There are no changes to show.');
     return;
   }
-  await openFileDiff(locator, entry.context, entry.file);
+  await openAllChangesAcross(deps.locator, requireSnapshot(deps.active), groups);
 }
 
-async function openLoadedChanges(locator: WorkspaceLocator, provider: ChangesTreeProvider): Promise<void> {
-  const diff = provider.currentDiff;
-  if (diff === undefined) {
-    void vscode.window.showInformationMessage('Select a workspace to see its changes.');
-    return;
-  }
-  await openAllChanges(locator, diff.context, diff.files);
+async function openChangedFile(deps: ChangesCommandDeps, node: ChangeFileNode): Promise<void> {
+  const { workspace, state } = requireSnapshot(deps.active);
+  const uri = deps.locator.fileUri(workspace, state, node.workspacePath);
+  await vscode.window.showTextDocument(uri, { viewColumn: DIFF_SHOW_OPTIONS.viewColumn, preview: false });
 }
 
-function selectedEntry(treeView: vscode.TreeView<ChangesNode>): ChangeEntry | undefined {
-  return treeView.selection.find((node): node is ChangeEntry => node.type === 'change');
+async function copyChangedPath(deps: ChangesCommandDeps, node: ChangeFileNode): Promise<void> {
+  const { state } = requireSnapshot(deps.active);
+  const pathApi = deps.locator.isLocal(state) ? path : path.posix;
+  await vscode.env.clipboard.writeText(pathApi.join(state.working_dir, node.workspacePath));
 }
 
-function toNodes(loaded: LoadedDiff | ApiError | undefined): ChangesNode[] {
-  if (loaded === undefined) {
-    return [];
+function requireSnapshot(active: ChangesWorkspaceSource): WorkspaceSnapshot {
+  const { ref: workspace, state } = active;
+  if (workspace === undefined || state === undefined) {
+    throw new ApiError(0, 'workspace_not_loaded', 'The workspace state has not loaded yet. Try again in a moment.');
   }
-  if (loaded instanceof ApiError) {
-    return [{ type: 'message', text: `Cannot load changes: ${loaded.message}` }];
-  }
-  if (loaded.files.length === 0) {
-    return [{ type: 'message', text: `No changes against ${loaded.context.baseRef}` }];
-  }
-  return loaded.files.map((file) => ({ type: 'change', file, kind: changeKindOf(file), context: loaded.context }));
+  return { workspace, state };
 }
 
-function describeChange(entry: ChangeEntry): string {
-  const directory = path.posix.dirname(entry.file.path);
-  const location = directory === '.' ? '' : `${directory} `;
-  return `${STATUS_LETTERS[entry.kind]} ${location}+${entry.file.additions} −${entry.file.deletions}`;
+function presentView(treeView: vscode.TreeView<ChangesTreeNode>, provider: ChangesTreeProvider): void {
+  const count = provider.fileCount;
+  treeView.badge = count > 0 ? { value: count, tooltip: `${count} changed files` } : undefined;
+  treeView.description = provider.summary;
+  void vscode.commands.executeCommand('setContext', MODE_CONTEXT_KEY, provider.mode);
+  void vscode.commands.executeCommand('setContext', LAYOUT_CONTEXT_KEY, provider.layout);
+  void vscode.commands.executeCommand('setContext', LOADED_CONTEXT_KEY, provider.isLoaded);
+}
+
+function rootNodesFor(loaded: LoadedChanges, layout: ChangesLayout): ChangesTreeNode[] {
+  switch (loaded.status) {
+    case 'idle':
+      return [];
+    case 'failed':
+      return [{ type: 'message', id: 'message', text: `Cannot load changes: ${loaded.message}` }];
+    case 'loaded':
+      return buildChangeNodes(loaded.repos, layout);
+  }
+}
+
+function distinctBases(repos: readonly RepoChanges[]): string[] {
+  return [...new Set(repos.flatMap((entry) => (entry.source.base ? [entry.source.base] : [])))];
+}
+
+export function changeTreeItem(node: ChangesTreeNode): vscode.TreeItem {
+  switch (node.type) {
+    case 'file':
+      return fileItem(node);
+    case 'folder':
+      return folderItem(node);
+    case 'repo':
+      return repoItem(node);
+    case 'message':
+      return messageItem(node);
+  }
+}
+
+function fileItem(node: ChangeFileNode): vscode.TreeItem {
+  const item = new vscode.TreeItem(path.posix.basename(node.file.path), vscode.TreeItemCollapsibleState.None);
+  item.id = node.id;
+  item.resourceUri = changeResourceUri(node.workspacePath, node.kind);
+  item.description = [node.directory, `+${node.file.additions} −${node.file.deletions}`].filter(Boolean).join('  ');
+  item.tooltip = `${node.file.old_path ? `${node.file.old_path} → ` : ''}${node.workspacePath} • ${KIND_LABELS[node.kind]}`;
+  item.contextValue = node.kind === 'deleted' ? DELETED_FILE_CONTEXT : FILE_CONTEXT;
+  item.command = { command: OPEN_FILE_DIFF_COMMAND, title: 'Open Diff', arguments: [node] };
+  return item;
+}
+
+function folderItem(node: ChangeFolderNode): vscode.TreeItem {
+  const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Expanded);
+  item.id = node.id;
+  item.resourceUri = changeResourceUri(node.workspacePath);
+  item.iconPath = vscode.ThemeIcon.Folder;
+  item.tooltip = node.workspacePath;
+  item.contextValue = FOLDER_CONTEXT;
+  return item;
+}
+
+function repoItem(node: ChangeRepoNode): vscode.TreeItem {
+  const item = new vscode.TreeItem(node.repo.name, vscode.TreeItemCollapsibleState.Expanded);
+  item.id = node.id;
+  item.iconPath = new vscode.ThemeIcon('repo');
+  item.description = node.repo.source.base ? `vs ${node.repo.source.base}` : undefined;
+  item.tooltip = node.repo.repo ?? ROOT_REPO;
+  return item;
+}
+
+function messageItem(node: MessageNode): vscode.TreeItem {
+  const item = new vscode.TreeItem(node.text);
+  item.id = node.id;
+  item.iconPath = new vscode.ThemeIcon('warning');
+  return item;
 }

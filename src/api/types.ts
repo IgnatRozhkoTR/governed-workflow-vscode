@@ -294,6 +294,11 @@ export interface DiffFile {
   status?: string;
 }
 
+export interface DiffRepo {
+  path: string;
+  name: string;
+}
+
 export interface DiffResponse {
   files: DiffFile[];
   mode: DiffMode;

@@ -30,10 +30,11 @@ export class Uri {
     readonly scheme: string,
     readonly path: string,
     readonly authority = '',
+    readonly query = '',
   ) {}
 
-  static from(components: { scheme: string; authority?: string; path?: string }): Uri {
-    return new Uri(components.scheme, components.path ?? '', components.authority ?? '');
+  static from(components: { scheme: string; authority?: string; path?: string; query?: string }): Uri {
+    return new Uri(components.scheme, components.path ?? '', components.authority ?? '', components.query ?? '');
   }
 
   static file(path: string): Uri {
@@ -106,11 +107,20 @@ export class TreeItem {
   contextValue?: string;
   command?: unknown;
   iconPath?: unknown;
+  resourceUri?: Uri;
 
   constructor(readonly label: string, readonly collapsibleState: number = TreeItemCollapsibleState.None) {}
 }
 export class ThemeIcon {
+  static readonly Folder = new ThemeIcon('folder');
+
   constructor(readonly id: string) {}
+}
+export class ThemeColor {
+  constructor(readonly id: string) {}
+}
+export class FileDecoration {
+  constructor(readonly badge?: string, readonly tooltip?: string, readonly color?: ThemeColor) {}
 }
 export const CommentMode = { Editing: 0, Preview: 1 } as const;
 
@@ -155,6 +165,7 @@ export const window = {
   showTextDocument: vi.fn(),
   createTerminal: vi.fn(),
   onDidCloseTerminal: vi.fn(),
+  withProgress: vi.fn((_options: unknown, task: () => unknown) => task()),
 };
 
 export const ViewColumn = { Active: -1 };
@@ -162,6 +173,7 @@ export const ViewColumn = { Active: -1 };
 export const commands = {
   executeCommand: vi.fn(),
   registerCommand: vi.fn(),
+  getCommands: vi.fn(async () => [] as string[]),
 };
 
 export const workspace = {

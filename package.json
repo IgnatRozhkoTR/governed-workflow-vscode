@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.21",
+  "version": "0.2.22",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -106,6 +106,21 @@
         "view": "governedWorkflow.state",
         "contents": "Select a workspace in Projects to follow it here and open it in Workspace Control.\n[Switch Workspace](command:governedWorkflow.switchWorkspace)",
         "when": "!governedWorkflow.hasWorkspace"
+      },
+      {
+        "view": "governedWorkflow.changes",
+        "contents": "Select a workspace to see the files it changed.\n[Switch Workspace](command:governedWorkflow.switchWorkspace)",
+        "when": "!governedWorkflow.hasWorkspace"
+      },
+      {
+        "view": "governedWorkflow.changes",
+        "contents": "No changes on this branch against its source branch.\n[Show Uncommitted Changes](command:governedWorkflow.changes.showUncommitted)",
+        "when": "governedWorkflow.hasWorkspace && governedWorkflow.changes.loaded && governedWorkflow.changes.mode != uncommitted"
+      },
+      {
+        "view": "governedWorkflow.changes",
+        "contents": "No uncommitted changes.\n[Show Branch Changes](command:governedWorkflow.changes.showBranch)",
+        "when": "governedWorkflow.hasWorkspace && governedWorkflow.changes.loaded && governedWorkflow.changes.mode == uncommitted"
       }
     ],
     "commands": [
@@ -159,10 +174,39 @@
         "icon": "$(diff-multiple)"
       },
       {
-        "command": "governedWorkflow.changes.toggleMode",
-        "title": "Toggle Changes Mode",
+        "command": "governedWorkflow.changes.showUncommitted",
+        "title": "Show Uncommitted Changes",
         "category": "Governed Workflow",
-        "icon": "$(git-compare)"
+        "icon": "$(edit)"
+      },
+      {
+        "command": "governedWorkflow.changes.showBranch",
+        "title": "Show Branch Changes",
+        "category": "Governed Workflow",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "governedWorkflow.changes.viewAsTree",
+        "title": "View as Tree",
+        "category": "Governed Workflow",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "governedWorkflow.changes.viewAsList",
+        "title": "View as List",
+        "category": "Governed Workflow",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "governedWorkflow.changes.openFile",
+        "title": "Open File",
+        "category": "Governed Workflow",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "governedWorkflow.changes.copyPath",
+        "title": "Copy Path",
+        "category": "Governed Workflow"
       },
       {
         "command": "governedWorkflow.changes.refresh",
@@ -442,6 +486,14 @@
         {
           "command": "governedWorkflow.rejectPlan",
           "when": "governedWorkflow.planPending"
+        },
+        {
+          "command": "governedWorkflow.changes.openFile",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.changes.copyPath",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -536,19 +588,34 @@
           "group": "navigation@7"
         },
         {
-          "command": "governedWorkflow.changes.toggleMode",
-          "when": "view == governedWorkflow.changes",
-          "group": "navigation"
+          "command": "governedWorkflow.changes.showUncommitted",
+          "when": "view == governedWorkflow.changes && governedWorkflow.changes.mode != uncommitted",
+          "group": "navigation@1"
         },
         {
-          "command": "governedWorkflow.changes.refresh",
-          "when": "view == governedWorkflow.changes",
-          "group": "navigation"
+          "command": "governedWorkflow.changes.showBranch",
+          "when": "view == governedWorkflow.changes && governedWorkflow.changes.mode == uncommitted",
+          "group": "navigation@1"
         },
         {
           "command": "governedWorkflow.openChanges",
           "when": "view == governedWorkflow.changes",
-          "group": "navigation"
+          "group": "navigation@2"
+        },
+        {
+          "command": "governedWorkflow.changes.refresh",
+          "when": "view == governedWorkflow.changes",
+          "group": "navigation@3"
+        },
+        {
+          "command": "governedWorkflow.changes.viewAsList",
+          "when": "view == governedWorkflow.changes && governedWorkflow.changes.layout != list",
+          "group": "navigation@4"
+        },
+        {
+          "command": "governedWorkflow.changes.viewAsTree",
+          "when": "view == governedWorkflow.changes && governedWorkflow.changes.layout == list",
+          "group": "navigation@4"
         },
         {
           "command": "governedWorkflow.comments.filter",
@@ -626,6 +693,21 @@
           "command": "governedWorkflow.comments.unresolve",
           "when": "view == governedWorkflow.comments && viewItem == gwCommentResolved",
           "group": "inline@2"
+        },
+        {
+          "command": "governedWorkflow.changes.openFile",
+          "when": "view == governedWorkflow.changes && viewItem == gwChangeFile",
+          "group": "inline@1"
+        },
+        {
+          "command": "governedWorkflow.changes.openFile",
+          "when": "view == governedWorkflow.changes && viewItem == gwChangeFile",
+          "group": "1_open@1"
+        },
+        {
+          "command": "governedWorkflow.changes.copyPath",
+          "when": "view == governedWorkflow.changes && viewItem =~ /^gwChangeFile/",
+          "group": "2_copy@1"
         }
       ],
       "comments/commentThread/context": [

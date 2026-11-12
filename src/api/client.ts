@@ -11,6 +11,7 @@ import type {
   CreateWorkspaceResponse,
   Criterion,
   DiffQuery,
+  DiffRepo,
   DiffResponse,
   FileContentOptions,
   FileEntry,
@@ -140,6 +141,11 @@ export class ApiClient {
   async getCriteria(workspace: WorkspaceRef): Promise<Criterion[]> {
     const body = await this.requestJson<{ criteria: Criterion[] }>({ method: 'GET', path: wsPath(workspace, 'criteria') });
     return body.criteria;
+  }
+
+  async listRepos(workspace: WorkspaceRef): Promise<DiffRepo[]> {
+    const body = await this.requestJson<{ repos: DiffRepo[] }>({ method: 'GET', path: wsPath(workspace, 'repos') });
+    return body.repos;
   }
 
   getDiff(workspace: WorkspaceRef, query: DiffQuery): Promise<DiffResponse> {
