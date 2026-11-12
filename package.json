@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.23",
+  "version": "0.2.24",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -39,10 +39,26 @@
           "minimum": 3,
           "description": "How often the workspace state is polled while the VS Code window is focused and the Workspace Control panel is not visible (the panel polls every 3 seconds while visible)."
         },
+        "governedWorkflow.terminal.layout": {
+          "type": "string",
+          "enum": [
+            "panel",
+            "editor",
+            "fullscreen"
+          ],
+          "default": "editor",
+          "enumDescriptions": [
+            "The terminal panel. Drag the Terminal view to the bottom panel or the secondary side bar to choose where it docks.",
+            "A tab in the active editor group.",
+            "A tab in the active editor group, with that group maximised so the other groups are hidden."
+          ],
+          "markdownDescription": "Where the workspace's Claude terminal opens. Switch with the status bar item, **Claude Terminal Layout…** or **Toggle Claude Terminal Full Screen**; an open terminal is moved without reconnecting. When unset, `#governedWorkflow.terminal.maximize#` set to `true` means `fullscreen`."
+        },
         "governedWorkflow.terminal.maximize": {
           "type": "boolean",
           "default": true,
-          "description": "Maximize the editor area when a Claude session terminal opens."
+          "description": "Maximize the editor area when a Claude session terminal opens.",
+          "markdownDeprecationMessage": "Use `#governedWorkflow.terminal.layout#` instead. While the layout is unset, `true` here selects `fullscreen`."
         },
         "governedWorkflow.onSelectWorkspace": {
           "type": "string",
@@ -318,6 +334,33 @@
         "icon": "$(terminal)"
       },
       {
+        "command": "governedWorkflow.terminalLayout",
+        "title": "Claude Terminal Layout…",
+        "category": "Governed Workflow",
+        "icon": "$(layout)"
+      },
+      {
+        "command": "governedWorkflow.terminalLayoutPanel",
+        "title": "Claude Terminal Layout: Panel",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.terminalLayoutEditor",
+        "title": "Claude Terminal Layout: Editor",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.terminalLayoutFullScreen",
+        "title": "Claude Terminal Layout: Full Screen",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.toggleTerminalFullScreen",
+        "title": "Toggle Claude Terminal Full Screen",
+        "category": "Governed Workflow",
+        "icon": "$(screen-full)"
+      },
+      {
         "command": "governedWorkflow.switchWorkspace",
         "title": "Switch Workspace…",
         "category": "Governed Workflow",
@@ -439,6 +482,10 @@
       {
         "command": "governedWorkflow.showTerminal",
         "key": "ctrl+alt+`"
+      },
+      {
+        "command": "governedWorkflow.toggleTerminalFullScreen",
+        "key": "ctrl+alt+shift+enter"
       }
     ],
     "menus": {
@@ -565,12 +612,12 @@
         {
           "command": "governedWorkflow.approvePlan",
           "when": "view == governedWorkflow.state && governedWorkflow.planPending",
-          "group": "navigation@4"
+          "group": "navigation@5"
         },
         {
           "command": "governedWorkflow.rejectPlan",
           "when": "view == governedWorkflow.state && governedWorkflow.planPending",
-          "group": "navigation@5"
+          "group": "navigation@6"
         },
         {
           "command": "governedWorkflow.switchWorkspace",
@@ -603,6 +650,11 @@
           "group": "navigation@2"
         },
         {
+          "command": "governedWorkflow.terminalLayout",
+          "when": "view == governedWorkflow.state",
+          "group": "navigation@3"
+        },
+        {
           "command": "governedWorkflow.attachImage",
           "when": "view == governedWorkflow.state && governedWorkflow.hasWorkspace",
           "group": "2_claude@1"
@@ -615,17 +667,17 @@
         {
           "command": "governedWorkflow.refresh",
           "when": "view == governedWorkflow.state",
-          "group": "navigation@3"
+          "group": "navigation@4"
         },
         {
           "command": "governedWorkflow.approveGate",
           "when": "view == governedWorkflow.state && governedWorkflow.gatePending",
-          "group": "navigation@6"
+          "group": "navigation@7"
         },
         {
           "command": "governedWorkflow.rejectGate",
           "when": "view == governedWorkflow.state && governedWorkflow.gatePending",
-          "group": "navigation@7"
+          "group": "navigation@8"
         },
         {
           "command": "governedWorkflow.changes.showUncommitted",
@@ -826,6 +878,11 @@
           "when": "governedWorkflow.activeFileHasOpenComments",
           "group": "7_governedWorkflow"
         }
+      ]
+    },
+    "configurationDefaults": {
+      "terminal.integrated.commandsToSkipShell": [
+        "governedWorkflow.toggleTerminalFullScreen"
       ]
     }
   },

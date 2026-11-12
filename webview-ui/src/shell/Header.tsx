@@ -28,7 +28,7 @@ import { useMenuFocus } from './menuFocus';
 import { useTabTitle } from './tabTitles';
 import { useRememberedNavigate } from './useRememberedNavigate';
 
-type NativeMethod = 'native.resumeClaude' | 'native.showTerminal' | 'native.switchWorkspace';
+type NativeMethod = 'native.resumeClaude' | 'native.showTerminal' | 'native.terminalLayout' | 'native.switchWorkspace';
 
 const FAST_WORKFLOW_MODE = 'fast';
 const LOCALE_OPTIONS = LOCALES.map((locale) => ({ value: locale, label: locale.toUpperCase() }));
@@ -433,6 +433,7 @@ function OverflowMenuItems({ locale, isTicketFinished, notify, localeChange, run
           ))}
           <MenuItem icon="debug-continue" label={t('buttons.resume')} onSelect={() => runAndClose(() => void callNative('native.resumeClaude'))} />
           <MenuItem icon="terminal" label={t('vsc.header.showTerminal')} onSelect={() => runAndClose(() => void callNative('native.showTerminal'))} />
+          <MenuItem icon="layout" label={t('vsc.header.terminalLayout')} onSelect={() => runAndClose(() => void callNative('native.terminalLayout'))} />
         </>
       )}
       <MenuItem icon="arrow-swap" label={t('header.switch')} onSelect={() => runAndClose(() => void callNative('native.switchWorkspace'))} />

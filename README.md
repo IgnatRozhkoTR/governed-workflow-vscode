@@ -9,7 +9,7 @@ A VS Code client for [Governed Workflow](https://github.com/IgnatRozhkoTR/govern
 - Comment anywhere. Comments on plan items, scope, findings and criteria live in the panel. Code comments sit on lines in the editor and the diff editor, on files and folders from the explorer, and in the Comments view. All of them are the same threads the web panel and the agents see.
 - Review the branch diff in VS Code's native diff editor, from the **Changes** view in the sidebar or the panel's Changes tab.
 - Create projects and workspaces, run project setup, archive workspaces and remove projects.
-- Run the workspace's Claude Code session in a full-size editor terminal, attach images to it, and manage the panel's other terminal sessions.
+- Run the workspace's Claude Code session in an editor tab, full screen or the terminal panel, attach images to it, and manage the panel's other terminal sessions.
 
 ## Workspace Control panel
 
@@ -70,7 +70,8 @@ The extension prefers the workspace side (`extensionKind: workspace, ui`) and fa
 |---------|---------|-------------|
 | `governedWorkflow.serverUrl` | `http://localhost:5111` | Base URL of the admin panel. |
 | `governedWorkflow.pollIntervalSeconds` | `10` | State polling interval while the window is focused and the Workspace Control panel is not visible. While the panel is visible and the window focused, the state is polled every 3 seconds (cheap ETag/304 requests). Minimum 3. |
-| `governedWorkflow.terminal.maximize` | `true` | Maximize the editor area when the Claude terminal opens. |
+| `governedWorkflow.terminal.layout` | `editor` | Where the Claude terminal opens: `panel` (the terminal panel; drag it to the bottom or the secondary side bar), `editor` (an editor tab) or `fullscreen` (an editor tab with its group maximised). Switch from the status bar item, **Claude Terminal Layout…** or **Toggle Claude Terminal Full Screen** (`Ctrl+Alt+Shift+Enter`); an open terminal moves without reconnecting. |
+| `governedWorkflow.terminal.maximize` | `true` | Deprecated. While `terminal.layout` is unset, an explicit `true` selects `fullscreen`. |
 | `governedWorkflow.onSelectWorkspace` | `newWindow` | What picking a workspace does when this window is not on its worktree: `newWindow`, `sameWindow`, `addFolder` or `off`. |
 | `governedWorkflow.sshHost` | empty | SSH target for worktrees on the admin panel's machine, e.g. `ig@mac` or an `~/.ssh/config` alias. Empty: the panel's reported user at the `serverUrl` host. |
 

@@ -4,6 +4,7 @@ export const SHELL_LAYOUT_MESSAGES: ModuleMessages = {
   en: {
     'vsc.header.moreActions': 'More actions',
     'vsc.header.showTerminal': 'Show Claude terminal',
+    'vsc.header.terminalLayout': 'Claude terminal layout…',
     'vsc.header.openPr': 'Open PR',
     'vsc.header.openPrNamed': 'Open PR · {name}',
     'vsc.tabs.more': 'More tabs',
@@ -110,6 +111,7 @@ export const SHELL_LAYOUT_MESSAGES: ModuleMessages = {
   ru: {
     'vsc.header.moreActions': 'Другие действия',
     'vsc.header.showTerminal': 'Показать терминал Claude',
+    'vsc.header.terminalLayout': 'Расположение терминала Claude…',
     'vsc.header.openPr': 'Открыть PR',
     'vsc.header.openPrNamed': 'Открыть PR · {name}',
     'vsc.tabs.more': 'Другие вкладки',

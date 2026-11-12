@@ -61,6 +61,7 @@ export interface RpcMethodMap {
   'native.openAllChanges':{ params: OpenAllChangesArgs;         result: void };
   'native.resumeClaude':  { params: Record<string, never>;      result: void };
   'native.showTerminal':  { params: Record<string, never>;      result: void };
+  'native.terminalLayout':{ params: Record<string, never>;      result: void };
   'native.startClaude':   { params: StartClaudeArgs;            result: void };
   'native.openWorktree':  { params: Record<string, never>;      result: void };
   'native.switchWorkspace':{ params: Record<string, never>;     result: void };

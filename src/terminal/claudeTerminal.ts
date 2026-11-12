@@ -4,10 +4,8 @@ import type { ApiClient } from '../api/client';
 import { ApiError } from '../api/errors';
 import type { WorkspaceRef } from '../api/types';
 import { unwrapRef, type RefArgument } from '../commands/refArgument';
+import { readTerminalLayout, type TerminalPlacement } from './terminalLayout';
 
-const CONFIG_SECTION = 'governedWorkflow';
-const MAXIMIZE_SETTING = 'terminal.maximize';
-const MAXIMIZE_COMMAND = 'workbench.action.maximizeEditorHideSidebar';
 const HTTP_SERVICE_UNAVAILABLE = 503;
 const ANSI_RED = '\x1b[31m';
 const ANSI_RESET = '\x1b[0m';
@@ -24,6 +22,7 @@ export interface ActiveWorkspaceSource {
 export interface ClaudeTerminalDeps {
   readonly client: ApiClient;
   readonly activeWorkspace: ActiveWorkspaceSource;
+  readonly placement: TerminalPlacement;
 }
 
 export interface StartClaudeOptions {
@@ -139,6 +138,7 @@ export class ClaudeTerminal implements vscode.Pseudoterminal {
 
 export interface ClaudeTerminalHandle {
   sendText(ref: WorkspaceRef, text: string): boolean;
+  terminalFor(ref: WorkspaceRef): vscode.Terminal | undefined;
 }
 
 class ClaudeTerminalManager implements ClaudeTerminalHandle {
@@ -154,23 +154,17 @@ class ClaudeTerminalManager implements ClaudeTerminalHandle {
     }
   }
 
+  terminalFor(ref: WorkspaceRef): vscode.Terminal | undefined {
+    return this.terminals.get(workspaceKey(ref));
+  }
+
   async show(ref: WorkspaceRef): Promise<void> {
     const existing = this.terminals.get(workspaceKey(ref));
     if (existing === undefined) {
       await this.runSessionCall(() => this.deps.client.terminalResume(ref), ref);
       return;
     }
-    existing.show(false);
-    await this.maximizeIfConfigured();
-  }
-
-  async resume(ref: WorkspaceRef): Promise<void> {
-    const existing = this.terminals.get(workspaceKey(ref));
-    if (existing !== undefined) {
-      existing.show();
-      return;
-    }
-    await this.runSessionCall(() => this.deps.client.terminalResume(ref), ref);
+    await this.deps.placement.moveTo(existing, readTerminalLayout());
   }
 
   async startFresh(ref: WorkspaceRef, skipConfirm: boolean): Promise<void> {
@@ -230,25 +224,14 @@ class ClaudeTerminalManager implements ClaudeTerminalHandle {
 
   private async openTerminal(ref: WorkspaceRef): Promise<void> {
     const url = await this.deps.client.terminalSocketUrl(ref);
+    const layout = readTerminalLayout();
     const terminal = vscode.window.createTerminal({
       name: `Claude: ${ref.branch}`,
       pty: new ClaudeTerminal(url),
-      location: { viewColumn: vscode.ViewColumn.Active },
+      location: this.deps.placement.creationLocation(layout),
     });
     this.terminals.set(workspaceKey(ref), terminal);
-    terminal.show();
-    await this.maximizeIfConfigured();
-  }
-
-  private async maximizeIfConfigured(): Promise<void> {
-    if (!vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>(MAXIMIZE_SETTING, true)) {
-      return;
-    }
-    try {
-      await vscode.commands.executeCommand(MAXIMIZE_COMMAND);
-    } catch {
-      return;
-    }
+    await this.deps.placement.present(terminal, layout);
   }
 
   private reportFailure(error: unknown): void {
@@ -281,7 +264,7 @@ export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: C
     vscode.commands.registerCommand('governedWorkflow.resumeClaude', async (arg?: RefArgument) => {
       const target = resolve(arg);
       if (target !== undefined) {
-        await manager.resume(target);
+        await manager.show(target);
       }
     }),
     vscode.commands.registerCommand('governedWorkflow.showTerminal', async () => {

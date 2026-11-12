@@ -164,11 +164,20 @@ export const window = {
   showInformationMessage: vi.fn(),
   showTextDocument: vi.fn(),
   createTerminal: vi.fn(),
+  tabGroups: { all: [] as { tabs: FakeTab[] }[] },
   onDidCloseTerminal: vi.fn(),
   withProgress: vi.fn((_options: unknown, task: () => unknown) => task()),
 };
 
 export const ViewColumn = { Active: -1 };
+export const TerminalLocation = { Panel: 1, Editor: 2 } as const;
+
+export class TabInputTerminal {}
+
+export interface FakeTab {
+  readonly label: string;
+  readonly input: unknown;
+}
 
 export const commands = {
   executeCommand: vi.fn(),
@@ -182,6 +191,7 @@ export const workspace = {
   fs: { writeFile: vi.fn() },
   openTextDocument: vi.fn(),
   getConfiguration: vi.fn(),
+  onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
 };
 
 export const extensions = {
