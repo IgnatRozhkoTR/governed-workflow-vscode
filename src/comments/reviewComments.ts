@@ -44,6 +44,7 @@ export class ReviewCommentController implements vscode.Disposable {
     this.threads = new CodeThreadSet(this.controller, locator);
     this.listeners = [
       comments.onDidChange(() => this.refresh()),
+      comments.onDidChangeResolution((change) => this.threads.markResolved(change.rootIds, change.isResolved)),
       vscode.workspace.onDidOpenTextDocument((document) => this.threads.placeIn(document)),
       vscode.workspace.onDidSaveTextDocument((document) => this.threads.placeIn(document)),
     ];
@@ -52,6 +53,10 @@ export class ReviewCommentController implements vscode.Disposable {
 
   hasThread(rootId: number): boolean {
     return this.threads.hasThread(rootId);
+  }
+
+  filePathOf(thread: vscode.CommentThread): string | undefined {
+    return this.threads.filePathOf(thread);
   }
 
   revealThread(rootId: number): Promise<boolean> {

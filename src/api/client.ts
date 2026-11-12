@@ -60,6 +60,8 @@ const HTTP_UNAUTHORIZED = 401;
 const NO_TOKEN_CONFIGURED_CODE = 'no_token_configured';
 const CLAUDE_SESSION_KIND = 'claude';
 const ERROR_MESSAGE_FIELDS = ['details', 'reason', 'message', 'error'] as const;
+// The resolution the server gives a review thread a user resolves by hand, so bulk and single resolves agree.
+const USER_REVIEW_RESOLUTION = 'out_of_scope';
 
 export { encodeBranchPath, wsPath };
 
@@ -184,6 +186,12 @@ export class ApiClient {
 
   async resolveComment(workspace: WorkspaceRef, commentId: number, resolved: boolean): Promise<void> {
     await this.send({ method: 'PUT', path: wsPath(workspace, `comments/${commentId}/resolve`), body: { resolved } });
+  }
+
+  async resolveAllReviewIssues(workspaceId: number): Promise<number> {
+    const path = `/api/workspaces/${encodeURIComponent(String(workspaceId))}/review-issues/resolve-all`;
+    const body = await this.requestJson<{ resolved_count: number }>({ method: 'POST', path, body: { resolution: USER_REVIEW_RESOLUTION } });
+    return body.resolved_count;
   }
 
   approve(workspace: WorkspaceRef, commitMessage?: string): Promise<GateResult> {

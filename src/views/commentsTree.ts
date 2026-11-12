@@ -12,6 +12,8 @@ import {
   type TargetGroup,
 } from '../comments/commentGrouping';
 import { authorLabel, codePathOf, lineSpanOf } from '../comments/commentMapping';
+import { openRootsInFile } from '../comments/commentResolution';
+import { resolveFileComments } from '../comments/resolveCommands';
 import type { ReviewCommentController } from '../comments/reviewComments';
 import type { WorkspaceComments } from '../comments/workspaceComments';
 import { runWithErrorMessage } from '../diff/diffView';
@@ -24,8 +26,10 @@ export const COMMENTS_OPEN_COMMAND = 'governedWorkflow.comments.open';
 export const COMMENTS_REPLY_COMMAND = 'governedWorkflow.comments.reply';
 export const COMMENTS_RESOLVE_COMMAND = 'governedWorkflow.comments.resolve';
 export const COMMENTS_UNRESOLVE_COMMAND = 'governedWorkflow.comments.unresolve';
+export const COMMENTS_RESOLVE_FILE_COMMAND = 'governedWorkflow.comments.resolveFile';
 export const OPEN_COMMENT_CONTEXT = 'gwCommentOpen';
 export const RESOLVED_COMMENT_CONTEXT = 'gwCommentResolved';
+export const FILE_WITH_OPEN_COMMENTS_CONTEXT = 'gwCommentFileOpen';
 const FILTER_STATE_KEY = 'governedWorkflow.comments.filter';
 const SUMMARY_LENGTH = 80;
 
@@ -121,7 +125,14 @@ class CommentsTreeProvider implements vscode.TreeDataProvider<CommentsNode> {
     item.description = folder === '.' ? counts : `${folder} · ${counts}`;
     item.iconPath = isCode ? vscode.ThemeIcon.File : new vscode.ThemeIcon('note');
     item.resourceUri = isCode ? this.codeUri(group.target) : undefined;
+    item.contextValue = this.hasOpenFileComments(group) ? FILE_WITH_OPEN_COMMENTS_CONTEXT : undefined;
     return item;
+  }
+
+  // Counted over all comments, not the filtered group, so the action also shows while the view lists resolved ones.
+  private hasOpenFileComments(group: TargetGroup): boolean {
+    const filePath = fileOfGroup(group);
+    return filePath !== undefined && openRootsInFile(this.comments.byTarget, filePath).length > 0;
   }
 
   private codeUri(relPath: string): vscode.Uri | undefined {
@@ -202,6 +213,14 @@ class CommentsView implements vscode.Disposable {
     await this.deps.comments.setResolved(requireComment(node).id, isResolved);
   }
 
+  async resolveFile(node: CommentsNode): Promise<void> {
+    const filePath = node.kind === 'target' ? fileOfGroup(node.group) : undefined;
+    if (filePath === undefined) {
+      throw new TypeError(`Resolve All in File invoked on a ${node.kind} node that is not a file.`);
+    }
+    await resolveFileComments(this.deps.comments, filePath);
+  }
+
   dispose(): void {
     this.listener.dispose();
     this.view.dispose();
@@ -238,6 +257,9 @@ export function registerCommentsView(context: vscode.ExtensionContext, deps: Com
     vscode.commands.registerCommand(COMMENTS_UNRESOLVE_COMMAND, (node: CommentsNode) =>
       runWithErrorMessage(() => view.setResolved(node, false)),
     ),
+    vscode.commands.registerCommand(COMMENTS_RESOLVE_FILE_COMMAND, (node: CommentsNode) =>
+      runWithErrorMessage(() => view.resolveFile(node)),
+    ),
   );
 }
 
@@ -272,6 +294,11 @@ function commentTooltip(comment: ReviewComment): vscode.MarkdownString {
 function summaryOf(text: string): string {
   const firstLine = text.trim().split(/\r?\n/, 1)[0] ?? '';
   return firstLine.length > SUMMARY_LENGTH ? `${firstLine.slice(0, SUMMARY_LENGTH - 1)}…` : firstLine;
+}
+
+function fileOfGroup(group: TargetGroup): string | undefined {
+  const codeComment = group.comments.find(isCodeComment);
+  return codeComment === undefined ? undefined : codePathOf(codeComment);
 }
 
 function requireComment(node: CommentsNode): ReviewComment {

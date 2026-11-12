@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { authorLabel, resolutionLabel, type CodeThread, type LineSpan, type ThreadMessage } from './commentMapping';
 
 export const RESOLVED_THREAD_CONTEXT = 'resolved';
-export const UNRESOLVED_THREAD_CONTEXT = 'unresolved';
+export const OPEN_THREAD_CONTEXT = 'open';
 const OUTDATED_LABEL = 'Outdated: the commented line changed';
 
 export function threadComments(thread: CodeThread): vscode.Comment[] {
@@ -12,7 +12,7 @@ export function threadComments(thread: CodeThread): vscode.Comment[] {
 
 export function applyResolvedState(thread: vscode.CommentThread, isResolved: boolean): void {
   thread.state = isResolved ? vscode.CommentThreadState.Resolved : vscode.CommentThreadState.Unresolved;
-  thread.contextValue = isResolved ? RESOLVED_THREAD_CONTEXT : UNRESOLVED_THREAD_CONTEXT;
+  thread.contextValue = isResolved ? RESOLVED_THREAD_CONTEXT : OPEN_THREAD_CONTEXT;
   thread.collapsibleState = isResolved
     ? vscode.CommentThreadCollapsibleState.Collapsed
     : vscode.CommentThreadCollapsibleState.Expanded;

@@ -67,6 +67,24 @@ export class CodeThreadSet implements vscode.Disposable {
     return undefined;
   }
 
+  filePathOf(thread: vscode.CommentThread): string | undefined {
+    const rootId = this.rootIdOf(thread);
+    return rootId === undefined ? undefined : this.entries.get(rootId)?.code.filePath;
+  }
+
+  // Applied right after the server accepted the change, so the thread flips without waiting for the next poll;
+  // the next sync still brings the server's resolution label.
+  markResolved(rootIds: readonly number[], isResolved: boolean): void {
+    for (const rootId of rootIds) {
+      const entry = this.entries.get(rootId);
+      if (entry !== undefined && entry.code.root.resolved !== isResolved) {
+        entry.code = { ...entry.code, root: { ...entry.code.root, resolved: isResolved } };
+        entry.signature = threadSignature(entry.code);
+        applyResolvedState(entry.thread, isResolved);
+      }
+    }
+  }
+
   hasThread(rootId: number): boolean {
     return this.entries.has(rootId);
   }

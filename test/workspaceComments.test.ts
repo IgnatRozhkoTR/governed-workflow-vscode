@@ -18,7 +18,7 @@ class FakeActive {
   readonly onDidChangeState = this.stateChanges.event;
 }
 
-const client = { addComment: vi.fn(), replyToComment: vi.fn(), resolveComment: vi.fn() };
+const client = { addComment: vi.fn(), replyToComment: vi.fn(), resolveComment: vi.fn(), resolveAllReviewIssues: vi.fn() };
 
 let active: FakeActive;
 let comments: WorkspaceComments;
@@ -123,6 +123,84 @@ describe('WorkspaceComments', () => {
 
     await expect(comments.setResolved(7, true)).rejects.toThrow('boom');
     expect(onMutate).not.toHaveBeenCalled();
+  });
+
+  it('setResolved_shouldAnnounceResolutionChange_afterServerAccepts', async () => {
+    client.resolveComment.mockResolvedValue(undefined);
+    const onResolution = vi.fn();
+    comments.onDidChangeResolution(onResolution);
+
+    await comments.setResolved(7, false);
+
+    expect(onResolution).toHaveBeenCalledWith({ rootIds: [7], isResolved: false });
+  });
+
+  it('resolveAll_shouldUseEndpointForReviewThreads_andResolveOtherScopesOneByOne', async () => {
+    client.resolveAllReviewIssues.mockResolvedValue(2);
+    client.resolveComment.mockResolvedValue(undefined);
+    const roots = [
+      makeComment({ id: 1, scope: 'review', target: 'a.ts' }),
+      makeComment({ id: 2, scope: 'review', target: 'b.ts' }),
+      makeComment({ id: 3, scope: 'plan' }),
+    ];
+
+    const outcome = await comments.resolveAll(roots);
+
+    expect(client.resolveAllReviewIssues).toHaveBeenCalledWith(1);
+    expect(client.resolveComment).toHaveBeenCalledOnce();
+    expect(client.resolveComment).toHaveBeenCalledWith(REF, 3, true);
+    expect(outcome).toEqual({ resolvedIds: [1, 2, 3], failures: [] });
+  });
+
+  it('resolveAll_shouldReportPartialFailure_andStillApplyAndRefreshTheSuccesses', async () => {
+    client.resolveAllReviewIssues.mockResolvedValue(1);
+    client.resolveComment.mockImplementation(async (_ref: WorkspaceRef, rootId: number) => {
+      if (rootId === 4) {
+        throw new Error('not found');
+      }
+    });
+    const onResolution = vi.fn();
+    const onMutate = vi.fn();
+    comments.onDidChangeResolution(onResolution);
+    comments.onDidMutate(onMutate);
+    const roots = [makeComment({ id: 1, scope: 'review' }), makeComment({ id: 3, scope: 'plan' }), makeComment({ id: 4, scope: 'research' })];
+
+    const outcome = await comments.resolveAll(roots);
+
+    expect(outcome.resolvedIds).toEqual([1, 3]);
+    expect(outcome.failures).toEqual([{ subject: 'thread #4', threadCount: 1, reason: 'not found' }]);
+    expect(onResolution).toHaveBeenCalledWith({ rootIds: [1, 3], isResolved: true });
+    expect(onMutate).toHaveBeenCalledOnce();
+    expect(active.poller.refreshNow).toHaveBeenCalledOnce();
+  });
+
+  it('resolveAll_shouldCountEveryReviewThreadAsFailed_whenEndpointFails', async () => {
+    client.resolveAllReviewIssues.mockRejectedValue(new Error('server down'));
+    const onMutate = vi.fn();
+    comments.onDidMutate(onMutate);
+
+    const outcome = await comments.resolveAll([makeComment({ id: 1, scope: 'review' }), makeComment({ id: 2, scope: 'review' })]);
+
+    expect(outcome).toEqual({ resolvedIds: [], failures: [{ subject: 'code review threads', threadCount: 2, reason: 'server down' }] });
+    expect(onMutate).not.toHaveBeenCalled();
+  });
+
+  it('resolveAll_shouldSkipEndpoint_whenNoReviewThreadIsOpen', async () => {
+    client.resolveComment.mockResolvedValue(undefined);
+
+    await comments.resolveAll([makeComment({ id: 3, scope: 'plan' })]);
+
+    expect(client.resolveAllReviewIssues).not.toHaveBeenCalled();
+  });
+
+  it('resolveRoots_shouldResolveEachId_andRefreshOnce', async () => {
+    client.resolveComment.mockResolvedValue(undefined);
+
+    const outcome = await comments.resolveRoots([5, 6]);
+
+    expect(client.resolveComment).toHaveBeenCalledTimes(2);
+    expect(outcome.resolvedIds).toEqual([5, 6]);
+    expect(active.poller.refreshNow).toHaveBeenCalledOnce();
   });
 
   it('dispose_shouldStopForwardingActiveChanges', () => {

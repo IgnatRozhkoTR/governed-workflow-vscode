@@ -51,6 +51,8 @@ Some setups need another extension. VS Code has no optional dependencies, so the
 - In an editor or a diff, use the `+` in the gutter to comment on a line or a range, or the file comment button for the whole file.
 - In the explorer or an editor tab, **Add Workflow Comment** comments on a file or folder.
 - The **Comments** view lists every thread in the workspace by area, with a badge for open ones. Filter, reply and resolve from there. Opening a comment jumps to its line, or to its place in the panel.
+- Resolve or reopen a code thread from its header in the editor. **Resolve All in This File** sits next to it, on file rows of the Comments view, and in the editor title and context menus while the file has open threads.
+- **Resolve All Comments** is on the title bar of the Comments view and of VS Code's Comments panel, and in the command palette. It asks first, then closes code review threads as out of scope and resolves the rest. VS Code gives extensions no menu on the panel's rows, so open a thread from there and use its header.
 
 A comment made in the editor shows up in the panel's Review tab, and the reverse is true too. Both refresh within one state update.
 

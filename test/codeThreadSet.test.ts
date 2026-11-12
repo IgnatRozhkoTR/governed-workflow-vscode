@@ -105,6 +105,54 @@ describe('CodeThreadSet.sync', () => {
     expect(created[0].contextValue).toBe('resolved');
   });
 
+  it('sync_shouldMarkNewThreadOpen_withOpenContextValue', () => {
+    set.sync(SNAPSHOT, [codeThread(1)]);
+
+    expect(created[0].state).toBe(CommentThreadState.Unresolved);
+    expect(created[0].contextValue).toBe('open');
+  });
+
+  it('markResolved_shouldFlipThreadInPlace_withoutRecreatingIt', () => {
+    set.sync(SNAPSHOT, [codeThread(1), codeThread(2)]);
+
+    set.markResolved([1], true);
+
+    expect(controller.createCommentThread).toHaveBeenCalledTimes(2);
+    expect(created[0].dispose).not.toHaveBeenCalled();
+    expect(created[0].state).toBe(CommentThreadState.Resolved);
+    expect(created[0].contextValue).toBe('resolved');
+    expect(created[1].contextValue).toBe('open');
+  });
+
+  it('markResolved_shouldKeepThreadResolved_whenNextSyncConfirmsIt', () => {
+    set.sync(SNAPSHOT, [codeThread(1, { resolution: 'open' })]);
+    set.markResolved([1], true);
+
+    set.sync(SNAPSHOT, [codeThread(1, { resolved: true, resolution: 'out_of_scope' })]);
+
+    expect(created[0].state).toBe(CommentThreadState.Resolved);
+    expect(created[0].comments[0]).toMatchObject({ label: 'out of scope' });
+  });
+
+  it('markResolved_shouldFollowServer_whenThreadWasReopenedBeforeNextSync', () => {
+    set.sync(SNAPSHOT, [codeThread(1)]);
+    set.markResolved([1], true);
+
+    set.sync(SNAPSHOT, [codeThread(1, { resolved: false })]);
+
+    expect(created[0].state).toBe(CommentThreadState.Unresolved);
+    expect(created[0].contextValue).toBe('open');
+  });
+
+  it('markResolved_shouldReopenThread_whenResolvedIsFalse', () => {
+    set.sync(SNAPSHOT, [codeThread(1, { resolved: true })]);
+
+    set.markResolved([1], false);
+
+    expect(created[0].state).toBe(CommentThreadState.Unresolved);
+    expect(created[0].contextValue).toBe('open');
+  });
+
   it('sync_shouldDisposeThread_whenRootDisappears', () => {
     set.sync(SNAPSHOT, [codeThread(1), codeThread(2)]);
 

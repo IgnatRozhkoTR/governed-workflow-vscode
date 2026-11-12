@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.22",
+  "version": "0.2.23",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -232,7 +232,7 @@
       },
       {
         "command": "governedWorkflow.comment.unresolve",
-        "title": "Unresolve Thread",
+        "title": "Reopen Thread",
         "category": "Governed Workflow",
         "icon": "$(discard)"
       },
@@ -406,9 +406,33 @@
       },
       {
         "command": "governedWorkflow.comments.unresolve",
-        "title": "Unresolve Thread",
+        "title": "Reopen Thread",
         "category": "Governed Workflow",
         "icon": "$(discard)"
+      },
+      {
+        "command": "governedWorkflow.comment.resolveFile",
+        "title": "Resolve All in This File",
+        "category": "Governed Workflow",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "governedWorkflow.comments.resolveFile",
+        "title": "Resolve All in File",
+        "category": "Governed Workflow",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "governedWorkflow.resolveFileComments",
+        "title": "Resolve All Comments in File",
+        "category": "Governed Workflow",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "governedWorkflow.resolveAllComments",
+        "title": "Resolve All Comments",
+        "category": "Governed Workflow",
+        "icon": "$(check-all)"
       }
     ],
     "keybindings": [
@@ -478,6 +502,22 @@
         {
           "command": "governedWorkflow.comments.unresolve",
           "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comment.resolveFile",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.comments.resolveFile",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.resolveFileComments",
+          "when": "governedWorkflow.activeFileHasOpenComments"
+        },
+        {
+          "command": "governedWorkflow.resolveAllComments",
+          "when": "governedWorkflow.hasWorkspace"
         },
         {
           "command": "governedWorkflow.approvePlan",
@@ -621,6 +661,16 @@
           "command": "governedWorkflow.comments.filter",
           "when": "view == governedWorkflow.comments",
           "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.resolveAllComments",
+          "when": "view == governedWorkflow.comments && governedWorkflow.hasWorkspace",
+          "group": "navigation"
+        },
+        {
+          "command": "governedWorkflow.resolveAllComments",
+          "when": "view == workbench.panel.comments && governedWorkflow.hasWorkspace",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -695,6 +745,16 @@
           "group": "inline@2"
         },
         {
+          "command": "governedWorkflow.comments.resolveFile",
+          "when": "view == governedWorkflow.comments && viewItem == gwCommentFileOpen",
+          "group": "inline@1"
+        },
+        {
+          "command": "governedWorkflow.comments.resolveFile",
+          "when": "view == governedWorkflow.comments && viewItem == gwCommentFileOpen",
+          "group": "1_resolve@1"
+        },
+        {
           "command": "governedWorkflow.changes.openFile",
           "when": "view == governedWorkflow.changes && viewItem == gwChangeFile",
           "group": "inline@1"
@@ -726,12 +786,17 @@
         {
           "command": "governedWorkflow.comment.resolve",
           "group": "inline",
-          "when": "commentController == governedWorkflow.review && commentThread == unresolved"
+          "when": "commentController == governedWorkflow.review && commentThread == open"
         },
         {
           "command": "governedWorkflow.comment.unresolve",
           "group": "inline",
           "when": "commentController == governedWorkflow.review && commentThread == resolved"
+        },
+        {
+          "command": "governedWorkflow.comment.resolveFile",
+          "group": "inline",
+          "when": "commentController == governedWorkflow.review && !commentThreadIsEmpty"
         }
       ],
       "explorer/context": [
@@ -745,6 +810,20 @@
         {
           "command": "governedWorkflow.commentOnResource",
           "when": "governedWorkflow.hasWorkspace",
+          "group": "7_governedWorkflow"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "governedWorkflow.resolveFileComments",
+          "when": "governedWorkflow.activeFileHasOpenComments",
+          "group": "7_governedWorkflow"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "governedWorkflow.resolveFileComments",
+          "when": "governedWorkflow.activeFileHasOpenComments",
           "group": "7_governedWorkflow"
         }
       ]

@@ -6,6 +6,7 @@ import { COMMAND_IDS, registerWorkspaceCommands } from './commands/workspaceComm
 import { registerGateCommands } from './commands/gateCommands';
 import { registerProjectCommands } from './commands/projectCommands';
 import { registerResourceComments } from './comments/resourceComments';
+import { registerResolveCommands } from './comments/resolveCommands';
 import { registerReviewComments } from './comments/reviewComments';
 import { Settings } from './config/settings';
 import { TokenStore } from './config/tokenStore';
@@ -97,6 +98,7 @@ interface CommentWiringDeps {
 function registerComments(context: vscode.ExtensionContext, deps: CommentWiringDeps): void {
   const { comments, controller } = registerReviewComments(context, deps);
   registerResourceComments(context, { comments, locator: deps.locator });
+  registerResolveCommands(context, { comments, controller, locator: deps.locator });
   registerCommentsView(context, { comments, controller, locator: deps.locator, panel: deps.panel });
   context.subscriptions.push(comments.onDidMutate(() => deps.panel.invalidate(['comments', 'reviewThreads'])));
 }
