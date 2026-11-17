@@ -6,10 +6,11 @@ export type { DiffMode };
 export const PROTOCOL_VERSION = 1;
 
 export type Locale = 'en' | 'ru';
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type QueryValue = string | number | boolean | undefined;
 
 export const LOCALES: readonly Locale[] = ['en', 'ru'];
+// The methods the panel webview may send through the bridge; the host client alone also sends PATCH.
 export const HTTP_METHODS: readonly HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE'];
 
 export function isLocale(value: unknown): value is Locale {

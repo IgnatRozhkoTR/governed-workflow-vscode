@@ -5,6 +5,7 @@ const CONFIG_SECTION = 'governedWorkflow';
 const DEFAULT_SERVER_URL = 'http://localhost:5111';
 const DEFAULT_POLL_INTERVAL_SECONDS = 10;
 const MIN_POLL_INTERVAL_SECONDS = 3;
+const ANNOTATIONS_ENABLED_KEY = 'annotations.enabled';
 
 export class Settings implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
@@ -33,6 +34,18 @@ export class Settings implements vscode.Disposable {
   get sshHost(): string | undefined {
     const configured = this.configuration().get<string>('sshHost', '').trim();
     return configured === '' ? undefined : configured;
+  }
+
+  get annotationsEnabled(): boolean {
+    return this.configuration().get<boolean>(ANNOTATIONS_ENABLED_KEY, true);
+  }
+
+  // A workspace-level value would hide a user-level change, so the toggle writes where the value is set.
+  async setAnnotationsEnabled(isEnabled: boolean): Promise<void> {
+    const configuration = this.configuration();
+    const isSetForWorkspace = configuration.inspect<boolean>(ANNOTATIONS_ENABLED_KEY)?.workspaceValue !== undefined;
+    const target = isSetForWorkspace ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    await configuration.update(ANNOTATIONS_ENABLED_KEY, isEnabled, target);
   }
 
   get onSelectWorkspace(): OnSelectWorkspace {

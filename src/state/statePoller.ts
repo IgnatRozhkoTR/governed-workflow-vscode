@@ -12,6 +12,7 @@ export class StatePoller implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<WorkspaceState>();
   private readonly authRequiredEmitter = new vscode.EventEmitter<void>();
   private readonly failureEmitter = new vscode.EventEmitter<ApiError>();
+  private readonly pollEmitter = new vscode.EventEmitter<void>();
   private windowStateListener: vscode.Disposable | undefined;
   private timer: NodeJS.Timeout | undefined;
   private refreshInFlight: Promise<void> | undefined;
@@ -24,6 +25,8 @@ export class StatePoller implements vscode.Disposable {
   readonly onDidChange: vscode.Event<WorkspaceState> = this.changeEmitter.event;
   readonly onAuthRequired: vscode.Event<void> = this.authRequiredEmitter.event;
   readonly onDidFail: vscode.Event<ApiError> = this.failureEmitter.event;
+  // Fires after every successful poll, unchanged state included, for data the state payload does not carry.
+  readonly onDidPoll: vscode.Event<void> = this.pollEmitter.event;
 
   constructor(
     readonly workspace: WorkspaceRef,
@@ -82,6 +85,7 @@ export class StatePoller implements vscode.Disposable {
     this.changeEmitter.dispose();
     this.authRequiredEmitter.dispose();
     this.failureEmitter.dispose();
+    this.pollEmitter.dispose();
   }
 
   private async runRefreshCycle(): Promise<void> {
@@ -116,6 +120,7 @@ export class StatePoller implements vscode.Disposable {
         this.etag = result.etag;
         this.changeEmitter.fire(result.state);
       }
+      this.pollEmitter.fire();
     } catch (error) {
       this.handleFetchError(error);
     }

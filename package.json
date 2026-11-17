@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.24",
+  "version": "0.2.25",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -38,6 +38,11 @@
           "default": 10,
           "minimum": 3,
           "description": "How often the workspace state is polled while the VS Code window is focused and the Workspace Control panel is not visible (the panel polls every 3 seconds while visible)."
+        },
+        "governedWorkflow.annotations.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the agents' code annotations next to the annotated lines in editors and on the modified side of diffs. Toggle with Toggle Annotations."
         },
         "governedWorkflow.terminal.layout": {
           "type": "string",
@@ -476,6 +481,31 @@
         "title": "Resolve All Comments",
         "category": "Governed Workflow",
         "icon": "$(check-all)"
+      },
+      {
+        "command": "governedWorkflow.annotations.add",
+        "title": "Add Annotation",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.annotations.toggleVisibility",
+        "title": "Toggle Annotations",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.annotations.toggleExpanded",
+        "title": "Toggle Annotations Expanded",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.annotations.edit",
+        "title": "Edit Annotation",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.annotations.delete",
+        "title": "Delete Annotation",
+        "category": "Governed Workflow"
       }
     ],
     "keybindings": [
@@ -486,6 +516,11 @@
       {
         "command": "governedWorkflow.toggleTerminalFullScreen",
         "key": "ctrl+alt+shift+enter"
+      },
+      {
+        "command": "governedWorkflow.annotations.toggleExpanded",
+        "key": "ctrl+alt+shift+a",
+        "when": "editorTextFocus && governedWorkflow.annotationsEnabled"
       }
     ],
     "menus": {
@@ -580,6 +615,22 @@
         },
         {
           "command": "governedWorkflow.changes.copyPath",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.annotations.add",
+          "when": "editorIsOpen && governedWorkflow.hasWorkspace && governedWorkflow.annotationsEnabled"
+        },
+        {
+          "command": "governedWorkflow.annotations.toggleExpanded",
+          "when": "editorIsOpen && governedWorkflow.annotationsEnabled"
+        },
+        {
+          "command": "governedWorkflow.annotations.edit",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.annotations.delete",
           "when": "false"
         }
       ],
@@ -876,6 +927,11 @@
         {
           "command": "governedWorkflow.resolveFileComments",
           "when": "governedWorkflow.activeFileHasOpenComments",
+          "group": "7_governedWorkflow"
+        },
+        {
+          "command": "governedWorkflow.annotations.add",
+          "when": "governedWorkflow.hasWorkspace && governedWorkflow.annotationsEnabled && resourceScheme =~ /^(file|gw-file)$/",
           "group": "7_governedWorkflow"
         }
       ]

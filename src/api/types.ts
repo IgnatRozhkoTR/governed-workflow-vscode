@@ -214,6 +214,40 @@ export interface CommentQuery {
   resolved?: boolean;
 }
 
+// Lines are 1-based and inclusive, already re-anchored by the server to the content at the requested ref.
+export interface CodeAnnotation {
+  id: number;
+  repo: string;
+  file_path: string;
+  line_start: number;
+  line_end: number;
+  text: string;
+  author: string;
+  stale: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnnotationQuery {
+  file: string;
+  repo: string;
+  ref: string;
+}
+
+export interface NewAnnotation {
+  repo: string;
+  file_path: string;
+  line_start: number;
+  line_end: number;
+  text: string;
+}
+
+export interface AnnotationUpdate {
+  text?: string;
+  line_start?: number;
+  line_end?: number;
+}
+
 export interface WorkspaceState {
   workspace_id: number;
   phase: string;

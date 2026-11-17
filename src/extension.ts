@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ApiClient } from './api/client';
 import type { WorkspaceState } from './api/types';
-import { registerAnnotations } from './annotations/annotationProvider';
+import { registerAnnotations } from './annotations/annotations';
 import { COMMAND_IDS, registerWorkspaceCommands } from './commands/workspaceCommands';
 import { registerGateCommands } from './commands/gateCommands';
 import { registerProjectCommands } from './commands/projectCommands';
@@ -70,7 +70,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerTerminalSessionCommands(context, { client });
   registerImageAttach(context, { client, activeWorkspace: view, claude });
   registerGateCommands(context, { client, active: view });
-  registerAnnotations(context);
+  registerAnnotations(context, { client, locator, active, settings });
   registerCompanions(context, { settings, memory: companionMemory });
   registerSshHostCheck(context);
   registerWindowAssociation(context, { client, active, selector, handoff, memory: new WindowSelectionMemory(context.workspaceState) });

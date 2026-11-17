@@ -56,6 +56,17 @@ Some setups need another extension. VS Code has no optional dependencies, so the
 
 A comment made in the editor shows up in the panel's Review tab, and the reverse is true too. Both refresh within one state update.
 
+## Annotations
+
+Annotations are explanatory notes the agents attach to a line range. They are context for readers, not review comments: no replies, no resolution, and they never block a gate.
+
+- They show in editors of the active workspace's files (local, Remote-SSH and `gw-file`) and on the modified side of the diffs the extension opens, never on the original side. A note sits in grey italics after its last line, cut to about 80 characters, and a thin bar on the left marks its lines. When the annotated code has changed so much that the note lost its anchor, it is dimmer, dashed and marked `(stale)`.
+- Hover the lines for the full text, the author and the time, with **Expand inline**, **Edit** and **Delete**. **Toggle Annotations Expanded** (`Ctrl+Alt+Shift+A`) expands or collapses the notes on the cursor line. A long expanded note wraps only with word wrap on.
+- **Add Annotation** in the editor context menu annotates the selected lines, or the cursor line. Save the file first: the panel anchors the note to the file on disk.
+- **Toggle Annotations** hides or shows them everywhere (`governedWorkflow.annotations.enabled`).
+
+Notes load for visible editors only and refresh with the state poll. While a file has unsaved edits they follow the edits and reload after the save. The diff of a commit shows the notes as of that commit.
+
 ## Deployment setups
 
 **Same machine, or Remote-SSH.** The workspace's working directory exists on the machine running VS Code. The extension opens local files directly, so the editor, language servers and git work as usual. Under Remote-SSH the extension runs on the remote host, next to the worktrees, and talks to the panel from there. Set `governedWorkflow.serverUrl` to the panel's address as seen from the remote host, usually `http://localhost:5111`.
@@ -70,6 +81,7 @@ The extension prefers the workspace side (`extensionKind: workspace, ui`) and fa
 |---------|---------|-------------|
 | `governedWorkflow.serverUrl` | `http://localhost:5111` | Base URL of the admin panel. |
 | `governedWorkflow.pollIntervalSeconds` | `10` | State polling interval while the window is focused and the Workspace Control panel is not visible. While the panel is visible and the window focused, the state is polled every 3 seconds (cheap ETag/304 requests). Minimum 3. |
+| `governedWorkflow.annotations.enabled` | `true` | Show annotations in editors and diffs. **Toggle Annotations** flips it. |
 | `governedWorkflow.terminal.layout` | `editor` | Where the Claude terminal opens: `panel` (the terminal panel; drag it to the bottom or the secondary side bar), `editor` (an editor tab) or `fullscreen` (an editor tab with its group maximised). Switch from the status bar item, **Claude Terminal Layout…** or **Toggle Claude Terminal Full Screen** (`Ctrl+Alt+Shift+Enter`); an open terminal moves without reconnecting. |
 | `governedWorkflow.terminal.maximize` | `true` | Deprecated. While `terminal.layout` is unset, an explicit `true` selects `fullscreen`. |
 | `governedWorkflow.onSelectWorkspace` | `newWindow` | What picking a workspace does when this window is not on its worktree: `newWindow`, `sameWindow`, `addFolder` or `off`. |
@@ -101,7 +113,7 @@ The panel stores only a SHA-256 hash of the admin token, so an existing token ca
 
 ## Commands
 
-All commands are in the `Governed Workflow` category. The main ones are open Workspace Control, switch workspace, approve or reject the plan or the gate, set phase, toggle YOLO mode, notify Claude, resume or start Claude, attach an image, terminal sessions, run project setup, and set token. Commands that act on a tree item or a file (remove project, archive workspace, add workflow comment, the comment actions) are in the context menus.
+All commands are in the `Governed Workflow` category. The main ones are open Workspace Control, switch workspace, approve or reject the plan or the gate, set phase, toggle YOLO mode, notify Claude, resume or start Claude, attach an image, terminal sessions, run project setup, and set token. Commands that act on a tree item or a file (remove project, archive workspace, add workflow comment, add annotation, the comment actions) are in the context menus.
 
 ## Build
 

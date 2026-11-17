@@ -3,7 +3,10 @@ import { normalizeWorkspaceState } from '../shared/normalizeState';
 import { encodeBranchPath, wsPath } from '../shared/paths';
 import { ApiError, AuthRequiredError } from './errors';
 import type {
+  AnnotationQuery,
+  AnnotationUpdate,
   BranchList,
+  CodeAnnotation,
   CommentQuery,
   ContextUpdate,
   CreateProjectRequest,
@@ -16,6 +19,7 @@ import type {
   FileContentOptions,
   FileEntry,
   GateResult,
+  NewAnnotation,
   NewComment,
   PasteImageResult,
   PlanStatus,
@@ -186,6 +190,28 @@ export class ApiClient {
 
   async resolveComment(workspace: WorkspaceRef, commentId: number, resolved: boolean): Promise<void> {
     await this.send({ method: 'PUT', path: wsPath(workspace, `comments/${commentId}/resolve`), body: { resolved } });
+  }
+
+  async listAnnotations(workspace: WorkspaceRef, query: AnnotationQuery): Promise<CodeAnnotation[]> {
+    const spec: RequestSpec = { method: 'GET', path: wsPath(workspace, 'annotations'), query: { ...query } };
+    const body = await this.requestJson<{ annotations: CodeAnnotation[] }>(spec);
+    return body.annotations;
+  }
+
+  async createAnnotation(workspace: WorkspaceRef, annotation: NewAnnotation): Promise<CodeAnnotation> {
+    const spec: RequestSpec = { method: 'POST', path: wsPath(workspace, 'annotations'), body: annotation };
+    const body = await this.requestJson<{ annotation: CodeAnnotation }>(spec);
+    return body.annotation;
+  }
+
+  async updateAnnotation(workspace: WorkspaceRef, annotationId: number, update: AnnotationUpdate): Promise<CodeAnnotation> {
+    const spec: RequestSpec = { method: 'PATCH', path: wsPath(workspace, `annotations/${annotationId}`), body: update };
+    const body = await this.requestJson<{ annotation: CodeAnnotation }>(spec);
+    return body.annotation;
+  }
+
+  async deleteAnnotation(workspace: WorkspaceRef, annotationId: number): Promise<void> {
+    await this.send({ method: 'DELETE', path: wsPath(workspace, `annotations/${annotationId}`) });
   }
 
   async resolveAllReviewIssues(workspaceId: number): Promise<number> {

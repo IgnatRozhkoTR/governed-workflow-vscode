@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ApiError } from '../api/errors';
 import type { DiffFile, WorkspaceRef, WorkspaceState } from '../api/types';
 import { baseFileUriParts } from '../fs/uris';
+import { rememberModifiedSide } from './diffSides';
 import { joinRepoPath } from '../shared/paths';
 import type { ChangeKind, DiffFileRef, DiffSource, OpenAllChangesArgs, OpenDiffArgs } from '../shared/protocol';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
@@ -139,7 +140,12 @@ function sidesFor(locator: WorkspaceLocator, snapshot: WorkspaceSnapshot, refs: 
 }
 
 function rightSideUri(snapshot: WorkspaceSnapshot, refs: DiffRefs, relPath: string, workspaceSide: vscode.Uri): vscode.Uri {
-  return refs.rightRef === undefined ? workspaceSide : baseUri(snapshot, refs, refs.rightRef, relPath);
+  if (refs.rightRef === undefined) {
+    return workspaceSide;
+  }
+  const right = baseUri(snapshot, refs, refs.rightRef, relPath);
+  rememberModifiedSide(right);
+  return right;
 }
 
 function baseUri(snapshot: WorkspaceSnapshot, refs: DiffRefs, ref: string, relPath: string): vscode.Uri {

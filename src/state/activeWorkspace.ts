@@ -7,13 +7,15 @@ import { StatePoller } from './statePoller';
 export class ActiveWorkspace implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<WorkspaceRef | undefined>();
   private readonly stateEmitter = new vscode.EventEmitter<WorkspaceState>();
+  private readonly pollEmitter = new vscode.EventEmitter<void>();
   private currentPoller: StatePoller | undefined;
   private currentState: WorkspaceState | undefined;
-  private pollerSubscription: vscode.Disposable | undefined;
+  private pollerSubscriptions: vscode.Disposable[] = [];
   private isPanelVisible = false;
 
   readonly onDidChange: vscode.Event<WorkspaceRef | undefined> = this.changeEmitter.event;
   readonly onDidChangeState: vscode.Event<WorkspaceState> = this.stateEmitter.event;
+  readonly onDidPoll: vscode.Event<void> = this.pollEmitter.event;
 
   constructor(
     private readonly client: ApiClient,
@@ -42,10 +44,13 @@ export class ActiveWorkspace implements vscode.Disposable {
     const poller = new StatePoller(ref, this.client, this.settings);
     this.currentPoller = poller;
     poller.setPanelVisible(this.isPanelVisible);
-    this.pollerSubscription = poller.onDidChange((state) => {
-      this.currentState = state;
-      this.stateEmitter.fire(state);
-    });
+    this.pollerSubscriptions = [
+      poller.onDidChange((state) => {
+        this.currentState = state;
+        this.stateEmitter.fire(state);
+      }),
+      poller.onDidPoll(() => this.pollEmitter.fire()),
+    ];
     this.changeEmitter.fire(ref);
     poller.start();
   }
@@ -54,11 +59,12 @@ export class ActiveWorkspace implements vscode.Disposable {
     this.releasePoller();
     this.changeEmitter.dispose();
     this.stateEmitter.dispose();
+    this.pollEmitter.dispose();
   }
 
   private releasePoller(): void {
-    this.pollerSubscription?.dispose();
-    this.pollerSubscription = undefined;
+    this.pollerSubscriptions.forEach((subscription) => subscription.dispose());
+    this.pollerSubscriptions = [];
     this.currentPoller?.dispose();
     this.currentPoller = undefined;
     this.currentState = undefined;
