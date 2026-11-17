@@ -99,3 +99,7 @@ function markerType(color: string, borderStyle: string): vscode.TextEditorDecora
     overviewRulerLane: vscode.OverviewRulerLane.Left,
   });
 }
+
+export function linesOf(document: Pick<vscode.TextDocument, 'lineCount' | 'lineAt'>): DocumentLines {
+  return { lineCount: document.lineCount, lengthOf: (line) => document.lineAt(line).text.length };
+}

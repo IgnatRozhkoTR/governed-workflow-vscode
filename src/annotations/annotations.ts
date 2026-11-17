@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
 import { runWithErrorMessage } from '../diff/diffView';
 import { AnnotationController, type AnnotationControllerDeps, type LocatedAnnotation } from './annotationController';
-import { TOGGLE_EXPANDED_COMMAND, type AnnotationCommandArgs } from './annotationHover';
 import { isWorkingTreeTarget } from './annotationTarget';
-import { ANNOTATION_CONTROLLER_ID, ANNOTATION_CONTROLLER_LABEL, AnnotationThreads, type AnnotationComment } from './annotationThreads';
+import { ANNOTATION_CONTROLLER_ID, ANNOTATION_CONTROLLER_LABEL, AnnotationThreads, type AnnotationCommandArgs, type AnnotationComment } from './annotationThreads';
 import { markdownToPlainPreview } from './plainPreview';
 
 export const EDIT_ANNOTATION_COMMAND = 'governedWorkflow.annotations.edit';
@@ -11,6 +10,7 @@ export const SAVE_ANNOTATION_COMMAND = 'governedWorkflow.annotations.saveEdit';
 export const CANCEL_ANNOTATION_EDIT_COMMAND = 'governedWorkflow.annotations.cancelEdit';
 export const DELETE_ANNOTATION_COMMAND = 'governedWorkflow.annotations.delete';
 export const CLOSE_ANNOTATION_COMMAND = 'governedWorkflow.annotations.close';
+export const TOGGLE_EXPANDED_COMMAND = 'governedWorkflow.annotations.toggleExpanded';
 const TOGGLE_VISIBILITY_COMMAND = 'governedWorkflow.annotations.toggleVisibility';
 const ADD_ANNOTATION_COMMAND = 'governedWorkflow.annotations.add';
 const DELETE_ACTION = 'Delete';

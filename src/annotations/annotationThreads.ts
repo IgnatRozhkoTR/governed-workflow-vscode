@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import type { CodeAnnotation } from '../api/types';
 import { displayedLines } from './annotationDecorations';
-import type { AnnotationCommandArgs } from './annotationHover';
 
 export const ANNOTATION_CONTROLLER_ID = 'governedWorkflow.annotations';
 export const ANNOTATION_CONTROLLER_LABEL = 'Annotations';
@@ -65,6 +64,11 @@ interface OpenAnnotation {
 }
 
 // A comment thread exists only while its annotation is open, so closed notes never fill the Comments panel.
+export interface AnnotationCommandArgs {
+  readonly documentUri: string;
+  readonly annotationId: number;
+}
+
 export class AnnotationThreads implements vscode.Disposable {
   private readonly opened = new Map<string, OpenAnnotation>();
 

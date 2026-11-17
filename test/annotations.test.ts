@@ -3,7 +3,6 @@ import * as vscode from 'vscode';
 import { ApiError } from '../src/api/errors';
 import type { CodeAnnotation } from '../src/api/types';
 import { buildDecorations, inlineLabel } from '../src/annotations/annotationDecorations';
-import { TOGGLE_EXPANDED_COMMAND, annotationHoverContents } from '../src/annotations/annotationHover';
 import { AnnotationStore } from '../src/annotations/annotationStore';
 import { annotationTargetOf, targetKey, type AnnotationTarget } from '../src/annotations/annotationTarget';
 import { selectedLines } from '../src/annotations/annotations';
@@ -298,39 +297,6 @@ describe('AnnotationStore', () => {
     await store.request(TARGET);
 
     expect(store.get(targetKey(TARGET))).toHaveLength(1);
-  });
-});
-
-describe('annotationHoverContents', () => {
-  const args = { documentUri: DOCUMENT_URI, annotationId: 1 };
-  const encodedArgs = encodeURIComponent(JSON.stringify([args]));
-
-  it('annotationHoverContents_shouldLinkOpen_withTheAnnotationAndDocument', () => {
-    const [, details] = annotationHoverContents(makeAnnotation(), DOCUMENT_URI, false);
-
-    expect(details.value).toContain(`[Open](command:${TOGGLE_EXPANDED_COMMAND}?${encodedArgs})`);
-    expect(details.value).not.toContain('Edit');
-  });
-
-  it('annotationHoverContents_shouldTrustOnlyTheToggleCommand_andNotTheNoteText', () => {
-    const [note, details] = annotationHoverContents(makeAnnotation({ text: '[x](command:workbench.action.reloadWindow)' }), DOCUMENT_URI, false);
-
-    expect(details.isTrusted).toEqual({ enabledCommands: [TOGGLE_EXPANDED_COMMAND] });
-    expect(note.isTrusted).toBeUndefined();
-    expect(note.value).toBe('[x](command:workbench.action.reloadWindow)');
-  });
-
-  it('annotationHoverContents_shouldOfferClose_whenAnnotationIsOpen', () => {
-    const [, details] = annotationHoverContents(makeAnnotation(), DOCUMENT_URI, true);
-
-    expect(details.value).toContain('[Close]');
-  });
-
-  it('annotationHoverContents_shouldEscapeTheAuthorAndFlagStaleness', () => {
-    const [, details] = annotationHoverContents(makeAnnotation({ author: 'a*b', stale: true }), DOCUMENT_URI, false);
-
-    expect(details.value).toContain('a\\*b');
-    expect(details.value).toContain('stale');
   });
 });
 

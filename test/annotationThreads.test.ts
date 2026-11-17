@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { ApiError } from '../src/api/errors';
 import type { CodeAnnotation } from '../src/api/types';
-import { annotationsClickedAt } from '../src/annotations/annotationClick';
+import { annotationsClickedAt, toggleClickedAnnotations } from '../src/annotations/annotationClick';
 import {
   ANNOTATION_CONTROLLER_ID,
   AnnotationComment,
@@ -140,6 +140,98 @@ describe('annotationsClickedAt', () => {
     const clamped = [makeAnnotation({ id: 3, line_start: 9, line_end: 40 })];
 
     expect(annotationsClickedAt(clamped, lines, caret(9, 5)).map((entry) => entry.id)).toEqual([3]);
+  });
+});
+
+describe('toggleClickedAnnotations', () => {
+  const noteLine = '    return value;';
+  const annotation = makeAnnotation({ line_start: 3, line_end: 4 });
+
+  function makeEditor(lineTexts: string[]) {
+    const document = {
+      uri: vscode.Uri.file('/work/tree/src/app.ts'),
+      lineCount: lineTexts.length,
+      lineAt: (line: number) => ({ text: lineTexts[line], firstNonWhitespaceCharacterIndex: lineTexts[line].search(/\S|$/) }),
+    } as unknown as vscode.TextDocument;
+    const editor = { document, selection: new vscode.Selection(new vscode.Position(0, 0), new vscode.Position(0, 0)) };
+    const clickLineEnd = (line: number) => {
+      const end = new vscode.Position(line, lineTexts[line].length);
+      editor.selection = new vscode.Selection(end, end);
+    };
+    return { editor, clickLineEnd };
+  }
+
+  let threads: AnnotationThreads;
+  let toggle: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    threads = new AnnotationThreads(makeController() as unknown as vscode.CommentController);
+    toggle = vi.spyOn(threads, 'toggle');
+  });
+
+  it('toggleClickedAnnotations_shouldOpenThenClose_whenTheNoteIsClickedTwice', () => {
+    const { editor, clickLineEnd } = makeEditor(['a', 'b', 'c', noteLine, 'e']);
+    const ref = { documentUri: editor.document.uri.toString(), annotationId: 1 };
+
+    clickLineEnd(3);
+    toggleClickedAnnotations(editor, [annotation], threads);
+    const openedAfterFirstClick = threads.isOpen(ref);
+    clickLineEnd(3);
+    toggleClickedAnnotations(editor, [annotation], threads);
+
+    expect(openedAfterFirstClick).toBe(true);
+    expect(threads.isOpen(ref)).toBe(false);
+  });
+
+  it('toggleClickedAnnotations_shouldMoveTheCaretToTheFirstNonWhitespaceCharacter_afterEachToggle', () => {
+    const { editor, clickLineEnd } = makeEditor(['a', 'b', 'c', noteLine, 'e']);
+
+    clickLineEnd(3);
+    toggleClickedAnnotations(editor, [annotation], threads);
+    const afterOpen = editor.selection.active;
+    clickLineEnd(3);
+    toggleClickedAnnotations(editor, [annotation], threads);
+
+    expect(afterOpen).toEqual(new vscode.Position(3, 4));
+    expect(editor.selection.active).toEqual(new vscode.Position(3, 4));
+  });
+
+  it('toggleClickedAnnotations_shouldNotToggleAgain_whenTheMovedCaretIsReported', () => {
+    const { editor, clickLineEnd } = makeEditor(['a', 'b', 'c', noteLine, 'e']);
+    clickLineEnd(3);
+    toggleClickedAnnotations(editor, [annotation], threads);
+
+    toggleClickedAnnotations(editor, [annotation], threads);
+
+    expect(toggle).toHaveBeenCalledOnce();
+  });
+
+  it('toggleClickedAnnotations_shouldLeaveTheCaretAlone_whenNoNoteWasClicked', () => {
+    const { editor } = makeEditor(['a', 'b', 'c', noteLine, 'e']);
+    const before = editor.selection;
+
+    toggleClickedAnnotations(editor, [annotation], threads);
+
+    expect(toggle).not.toHaveBeenCalled();
+    expect(editor.selection).toBe(before);
+  });
+
+  it('toggleClickedAnnotations_shouldMoveToTheLineStart_whenTheLineIsOnlyWhitespace', () => {
+    const { editor, clickLineEnd } = makeEditor(['a', 'b', 'c', '   ', 'e']);
+
+    clickLineEnd(3);
+    toggleClickedAnnotations(editor, [annotation], threads);
+
+    expect(editor.selection.active).toEqual(new vscode.Position(3, 0));
+  });
+
+  it('toggleClickedAnnotations_shouldMoveToTheLineAbove_whenTheLineIsEmpty', () => {
+    const { editor, clickLineEnd } = makeEditor(['a', 'b', 'c', '', 'e']);
+
+    clickLineEnd(3);
+    toggleClickedAnnotations(editor, [annotation], threads);
+
+    expect(editor.selection.active).toEqual(new vscode.Position(2, 0));
   });
 });
 

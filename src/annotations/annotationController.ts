@@ -5,20 +5,17 @@ import type { CodeAnnotation } from '../api/types';
 import type { Settings } from '../config/settings';
 import { isModifiedSide } from '../diff/diffSides';
 import type { WorkspaceSnapshot } from '../diff/diffView';
-import { BASE_FILE_SCHEME, REMOTE_FILE_SCHEME } from '../fs/uris';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
-import { annotationsClickedAt } from './annotationClick';
-import { AnnotationDecorationTypes, buildDecorations, displayedLines, type DocumentLines } from './annotationDecorations';
-import { annotationHoverContents, type AnnotationCommandArgs } from './annotationHover';
+import { toggleClickedAnnotations } from './annotationClick';
+import { AnnotationDecorationTypes, buildDecorations, displayedLines, linesOf } from './annotationDecorations';
 import { AnnotationStore } from './annotationStore';
 import { annotationTargetOf, targetKey, type AnnotationTarget } from './annotationTarget';
-import type { AnnotationThreads } from './annotationThreads';
+import type { AnnotationCommandArgs, AnnotationThreads } from './annotationThreads';
 import { lineEditsOf } from './lineShift';
 
 const ENABLED_CONTEXT_KEY = 'governedWorkflow.annotationsEnabled';
 const POLL_REFRESH_DEBOUNCE_MS = 300;
-const ANNOTATED_SCHEMES = ['file', REMOTE_FILE_SCHEME, BASE_FILE_SCHEME];
 
 export interface AnnotationControllerDeps {
   readonly client: ApiClient;
@@ -58,10 +55,6 @@ export class AnnotationController implements vscode.Disposable {
       vscode.workspace.onDidChangeTextDocument((event) => this.followEdits(event)),
       vscode.workspace.onDidSaveTextDocument((document) => this.refreshSaved(document)),
       vscode.workspace.onDidCloseTextDocument((document) => this.forget(document)),
-      vscode.languages.registerHoverProvider(
-        ANNOTATED_SCHEMES.map((scheme) => ({ scheme })),
-        { provideHover: (document, position) => this.hoverAt(document, position) },
-      ),
       deps.active.onDidChange(() => this.resetWorkspace()),
       deps.active.onDidPoll(() => this.schedulePollRefresh()),
       deps.settings.onDidChange(() => this.applyEnabledSetting()),
@@ -166,27 +159,11 @@ export class AnnotationController implements vscode.Disposable {
     }
   }
 
-  private hoverAt(document: vscode.TextDocument, position: vscode.Position): vscode.Hover | undefined {
-    const annotations = this.annotationsAt(document, position.line);
-    if (annotations.length === 0) {
-      return undefined;
-    }
-    const uri = document.uri.toString();
-    const contents = annotations.flatMap((annotation) =>
-      annotationHoverContents(annotation, uri, this.threads.isOpen({ documentUri: uri, annotationId: annotation.id })),
-    );
-    return new vscode.Hover(contents, document.lineAt(position.line).range);
-  }
-
   private toggleClicked(event: vscode.TextEditorSelectionChangeEvent): void {
     if (event.kind !== vscode.TextEditorSelectionChangeKind.Mouse || event.selections.length !== 1) {
       return;
     }
-    const { document } = event.textEditor;
-    const clicked = annotationsClickedAt(this.shownIn(document), linesOf(document), event.selections[0]);
-    if (clicked.length > 0) {
-      this.threads.toggle(document, clicked);
-    }
+    toggleClickedAnnotations(event.textEditor, this.shownIn(event.textEditor.document), this.threads);
   }
 
   private resetWorkspace(): void {
@@ -219,8 +196,4 @@ export class AnnotationController implements vscode.Disposable {
     const ref = target.ref === '' ? 'working tree' : target.ref;
     this.errorLog.appendLine(`Annotations of ${location} (${ref}) could not be loaded: ${error.message} [${error.code}]`);
   }
-}
-
-function linesOf(document: vscode.TextDocument): DocumentLines {
-  return { lineCount: document.lineCount, lengthOf: (line) => document.lineAt(line).text.length };
 }
