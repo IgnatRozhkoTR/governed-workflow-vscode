@@ -2,7 +2,7 @@
   "name": "governed-workflow-vscode",
   "displayName": "Governed Workflow",
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
-  "version": "0.2.25",
+  "version": "0.2.26",
   "publisher": "ignatrozhko",
   "license": "Apache-2.0",
   "repository": {
@@ -500,12 +500,30 @@
       {
         "command": "governedWorkflow.annotations.edit",
         "title": "Edit Annotation",
-        "category": "Governed Workflow"
+        "category": "Governed Workflow",
+        "icon": "$(edit)"
       },
       {
         "command": "governedWorkflow.annotations.delete",
         "title": "Delete Annotation",
+        "category": "Governed Workflow",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "governedWorkflow.annotations.saveEdit",
+        "title": "Save",
         "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.annotations.cancelEdit",
+        "title": "Cancel",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.annotations.close",
+        "title": "Close Annotation",
+        "category": "Governed Workflow",
+        "icon": "$(close)"
       }
     ],
     "keybindings": [
@@ -631,6 +649,18 @@
         },
         {
           "command": "governedWorkflow.annotations.delete",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.annotations.saveEdit",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.annotations.cancelEdit",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.annotations.close",
           "when": "false"
         }
       ],
@@ -900,6 +930,35 @@
           "command": "governedWorkflow.comment.resolveFile",
           "group": "inline",
           "when": "commentController == governedWorkflow.review && !commentThreadIsEmpty"
+        },
+        {
+          "command": "governedWorkflow.annotations.close",
+          "group": "inline",
+          "when": "commentController == governedWorkflow.annotations"
+        }
+      ],
+      "comments/comment/title": [
+        {
+          "command": "governedWorkflow.annotations.edit",
+          "group": "inline@1",
+          "when": "commentController == governedWorkflow.annotations"
+        },
+        {
+          "command": "governedWorkflow.annotations.delete",
+          "group": "inline@2",
+          "when": "commentController == governedWorkflow.annotations"
+        }
+      ],
+      "comments/comment/context": [
+        {
+          "command": "governedWorkflow.annotations.cancelEdit",
+          "group": "inline@1",
+          "when": "commentController == governedWorkflow.annotations"
+        },
+        {
+          "command": "governedWorkflow.annotations.saveEdit",
+          "group": "inline@2",
+          "when": "commentController == governedWorkflow.annotations"
         }
       ],
       "explorer/context": [

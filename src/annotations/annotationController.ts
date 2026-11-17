@@ -8,10 +8,12 @@ import type { WorkspaceSnapshot } from '../diff/diffView';
 import { BASE_FILE_SCHEME, REMOTE_FILE_SCHEME } from '../fs/uris';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import type { ActiveWorkspace } from '../state/activeWorkspace';
+import { annotationsClickedAt } from './annotationClick';
 import { AnnotationDecorationTypes, buildDecorations, displayedLines, type DocumentLines } from './annotationDecorations';
 import { annotationHoverContents, type AnnotationCommandArgs } from './annotationHover';
 import { AnnotationStore } from './annotationStore';
 import { annotationTargetOf, targetKey, type AnnotationTarget } from './annotationTarget';
+import type { AnnotationThreads } from './annotationThreads';
 import { lineEditsOf } from './lineShift';
 
 const ENABLED_CONTEXT_KEY = 'governedWorkflow.annotationsEnabled';
@@ -26,6 +28,7 @@ export interface AnnotationControllerDeps {
 }
 
 export interface LocatedAnnotation {
+  readonly document: vscode.TextDocument;
   readonly target: AnnotationTarget;
   readonly annotation: CodeAnnotation;
 }
@@ -36,12 +39,14 @@ export interface LocatedAnnotation {
 export class AnnotationController implements vscode.Disposable {
   private readonly store: AnnotationStore;
   private readonly decorationTypes = new AnnotationDecorationTypes();
-  private readonly expandedIds = new Set<number>();
   private readonly errorLog = vscode.window.createOutputChannel('Governed Workflow Annotations');
   private readonly listeners: vscode.Disposable[];
   private pollRefreshTimer: NodeJS.Timeout | undefined;
 
-  constructor(private readonly deps: AnnotationControllerDeps) {
+  constructor(
+    private readonly deps: AnnotationControllerDeps,
+    private readonly threads: AnnotationThreads,
+  ) {
     this.store = new AnnotationStore(
       (target) => deps.client.listAnnotations(target.workspace, { file: target.filePath, repo: target.repo, ref: target.ref }),
       (target, error) => this.logFetchError(target, error),
@@ -49,6 +54,7 @@ export class AnnotationController implements vscode.Disposable {
     this.listeners = [
       this.store.onDidChange((key) => this.renderEditorsOf(key)),
       vscode.window.onDidChangeVisibleTextEditors(() => this.showVisible()),
+      vscode.window.onDidChangeTextEditorSelection((event) => this.toggleClicked(event)),
       vscode.workspace.onDidChangeTextDocument((event) => this.followEdits(event)),
       vscode.workspace.onDidSaveTextDocument((document) => this.refreshSaved(document)),
       vscode.workspace.onDidCloseTextDocument((document) => this.forget(document)),
@@ -79,16 +85,7 @@ export class AnnotationController implements vscode.Disposable {
     const document = vscode.workspace.textDocuments.find((candidate) => candidate.uri.toString() === args.documentUri);
     const target = document === undefined ? undefined : this.targetOf(document);
     const annotation = target === undefined ? undefined : this.store.get(targetKey(target))?.find((entry) => entry.id === args.annotationId);
-    return target === undefined || annotation === undefined ? undefined : { target, annotation };
-  }
-
-  isExpanded(annotationId: number): boolean {
-    return this.expandedIds.has(annotationId);
-  }
-
-  setExpanded(annotationIds: readonly number[], isExpanded: boolean): void {
-    annotationIds.forEach((id) => (isExpanded ? this.expandedIds.add(id) : this.expandedIds.delete(id)));
-    vscode.window.visibleTextEditors.forEach((editor) => this.render(editor));
+    return document === undefined || target === undefined || annotation === undefined ? undefined : { document, target, annotation };
   }
 
   refresh(target: AnnotationTarget): Promise<void> {
@@ -116,11 +113,12 @@ export class AnnotationController implements vscode.Disposable {
   private render(editor: vscode.TextEditor): void {
     const target = this.enabledTargetOf(editor.document);
     const annotations = target === undefined ? undefined : this.store.get(targetKey(target));
+    this.threads.sync(editor.document, annotations);
     if (annotations === undefined) {
       this.decorationTypes.clear(editor);
       return;
     }
-    this.decorationTypes.apply(editor, buildDecorations(annotations, linesOf(editor.document), this.expandedIds));
+    this.decorationTypes.apply(editor, buildDecorations(annotations, linesOf(editor.document)));
   }
 
   private renderEditorsOf(key: string): void {
@@ -148,6 +146,7 @@ export class AnnotationController implements vscode.Disposable {
 
   private forget(document: vscode.TextDocument): void {
     const target = this.targetOf(document);
+    this.threads.closeDocument(document.uri.toString());
     if (target !== undefined) {
       this.store.forget(targetKey(target));
     }
@@ -173,13 +172,26 @@ export class AnnotationController implements vscode.Disposable {
       return undefined;
     }
     const uri = document.uri.toString();
-    const contents = annotations.flatMap((annotation) => annotationHoverContents(annotation, uri, this.isExpanded(annotation.id)));
+    const contents = annotations.flatMap((annotation) =>
+      annotationHoverContents(annotation, uri, this.threads.isOpen({ documentUri: uri, annotationId: annotation.id })),
+    );
     return new vscode.Hover(contents, document.lineAt(position.line).range);
+  }
+
+  private toggleClicked(event: vscode.TextEditorSelectionChangeEvent): void {
+    if (event.kind !== vscode.TextEditorSelectionChangeKind.Mouse || event.selections.length !== 1) {
+      return;
+    }
+    const { document } = event.textEditor;
+    const clicked = annotationsClickedAt(this.shownIn(document), linesOf(document), event.selections[0]);
+    if (clicked.length > 0) {
+      this.threads.toggle(document, clicked);
+    }
   }
 
   private resetWorkspace(): void {
     this.store.clear();
-    this.expandedIds.clear();
+    this.threads.closeAll();
     vscode.window.visibleTextEditors.forEach((editor) => this.decorationTypes.clear(editor));
   }
 

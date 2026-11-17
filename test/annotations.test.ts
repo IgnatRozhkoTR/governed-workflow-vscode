@@ -2,17 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { ApiError } from '../src/api/errors';
 import type { CodeAnnotation } from '../src/api/types';
-import { MAX_INLINE_LENGTH, buildDecorations, inlineLabel } from '../src/annotations/annotationDecorations';
-import {
-  DELETE_ANNOTATION_COMMAND,
-  EDIT_ANNOTATION_COMMAND,
-  TOGGLE_EXPANDED_COMMAND,
-  annotationHoverContents,
-} from '../src/annotations/annotationHover';
+import { buildDecorations, inlineLabel } from '../src/annotations/annotationDecorations';
+import { TOGGLE_EXPANDED_COMMAND, annotationHoverContents } from '../src/annotations/annotationHover';
 import { AnnotationStore } from '../src/annotations/annotationStore';
 import { annotationTargetOf, targetKey, type AnnotationTarget } from '../src/annotations/annotationTarget';
 import { selectedLines } from '../src/annotations/annotations';
 import { lineEditsOf, shiftSpans } from '../src/annotations/lineShift';
+import { MAX_PREVIEW_LENGTH } from '../src/annotations/plainPreview';
 import { WorkspaceLocator } from '../src/fs/workspaceLocator';
 import { baseFileUriParts, remoteFileUriParts } from '../src/fs/uris';
 import { makeState } from './support/fixtures';
@@ -127,30 +123,24 @@ describe('annotationTargetOf', () => {
 
 describe('inlineLabel', () => {
   it('inlineLabel_shouldTruncateWithAnEllipsis_whenTextIsLongerThanTheLimit', () => {
-    const label = inlineLabel(makeAnnotation({ text: 'x'.repeat(200) }), false);
+    const label = inlineLabel(makeAnnotation({ text: 'x'.repeat(200) }));
 
     expect(label.endsWith('…')).toBe(true);
-    expect(label.replace(/^✎ /, '')).toHaveLength(MAX_INLINE_LENGTH);
+    expect(label.replace(/^✎ /, '')).toHaveLength(MAX_PREVIEW_LENGTH);
   });
 
-  it('inlineLabel_shouldKeepTheFullText_whenExpanded', () => {
-    const text = 'y'.repeat(200);
-
-    expect(inlineLabel(makeAnnotation({ text }), true)).toBe(`✎ ${text}`);
-  });
-
-  it('inlineLabel_shouldCollapseLineBreaks_whenTextHasSeveralLines', () => {
-    expect(inlineLabel(makeAnnotation({ text: 'first\n\n  second' }), false)).toBe('✎ first second');
+  it('inlineLabel_shouldShowPlainText_whenNoteIsMarkdown', () => {
+    expect(inlineLabel(makeAnnotation({ text: '## Retry\n\nUses **exponential** `backoff`.' }))).toBe('✎ Retry Uses exponential backoff.');
   });
 
   it('inlineLabel_shouldAppendStaleMarker_whenAnchorWasLost', () => {
-    expect(inlineLabel(makeAnnotation({ text: 'note', stale: true }), false)).toBe('✎ note (stale)');
+    expect(inlineLabel(makeAnnotation({ text: 'note', stale: true }))).toBe('✎ note (stale)');
   });
 });
 
 describe('buildDecorations', () => {
   it('buildDecorations_shouldPlaceTextAtEndOfLastLine_andMarkEveryAnnotatedLine', () => {
-    const decorations = buildDecorations([makeAnnotation({ line_start: 3, line_end: 5 })], documentLines(10, 7), new Set());
+    const decorations = buildDecorations([makeAnnotation({ line_start: 3, line_end: 5 })], documentLines(10, 7));
 
     expect(decorations.inline).toHaveLength(1);
     expect(decorations.inline[0].range).toEqual(new vscode.Range(4, 7, 4, 7));
@@ -159,7 +149,7 @@ describe('buildDecorations', () => {
   });
 
   it('buildDecorations_shouldUseTheStaleDecorations_whenAnnotationIsStale', () => {
-    const decorations = buildDecorations([makeAnnotation({ stale: true })], documentLines(10), new Set());
+    const decorations = buildDecorations([makeAnnotation({ stale: true })], documentLines(10));
 
     expect(decorations.inline).toEqual([]);
     expect(decorations.staleInline).toHaveLength(1);
@@ -167,20 +157,19 @@ describe('buildDecorations', () => {
   });
 
   it('buildDecorations_shouldClampToTheLastLine_whenAnnotationIsPastTheEndOfTheDocument', () => {
-    const decorations = buildDecorations([makeAnnotation({ line_start: 8, line_end: 12 })], documentLines(5), new Set());
+    const decorations = buildDecorations([makeAnnotation({ line_start: 8, line_end: 12 })], documentLines(5));
 
     expect(decorations.markers).toEqual([new vscode.Range(4, 0, 4, 0)]);
   });
 
-  it('buildDecorations_shouldRenderTheFullText_whenAnnotationIsExpanded', () => {
-    const text = 'z'.repeat(120);
-    const decorations = buildDecorations([makeAnnotation({ id: 7, text })], documentLines(10), new Set([7]));
+  it('buildDecorations_shouldRenderThePlainPreview_asTheInlineText', () => {
+    const decorations = buildDecorations([makeAnnotation({ text: 'See [the docs](https://example.com).' })], documentLines(10));
 
-    expect(decorations.inline[0].renderOptions?.after?.contentText).toBe(`✎ ${text}`);
+    expect(decorations.inline[0].renderOptions?.after?.contentText).toBe('✎ See the docs.');
   });
 
   it('buildDecorations_shouldSkipEverything_whenDocumentIsEmpty', () => {
-    const decorations = buildDecorations([makeAnnotation()], documentLines(0), new Set());
+    const decorations = buildDecorations([makeAnnotation()], documentLines(0));
 
     expect([...decorations.inline, ...decorations.markers]).toEqual([]);
   });
@@ -316,26 +305,25 @@ describe('annotationHoverContents', () => {
   const args = { documentUri: DOCUMENT_URI, annotationId: 1 };
   const encodedArgs = encodeURIComponent(JSON.stringify([args]));
 
-  it('annotationHoverContents_shouldLinkExpandEditAndDelete_withTheAnnotationAndDocument', () => {
+  it('annotationHoverContents_shouldLinkOpen_withTheAnnotationAndDocument', () => {
     const [, details] = annotationHoverContents(makeAnnotation(), DOCUMENT_URI, false);
 
-    expect(details.value).toContain(`[Expand inline](command:${TOGGLE_EXPANDED_COMMAND}?${encodedArgs})`);
-    expect(details.value).toContain(`[Edit](command:${EDIT_ANNOTATION_COMMAND}?${encodedArgs})`);
-    expect(details.value).toContain(`[Delete](command:${DELETE_ANNOTATION_COMMAND}?${encodedArgs})`);
+    expect(details.value).toContain(`[Open](command:${TOGGLE_EXPANDED_COMMAND}?${encodedArgs})`);
+    expect(details.value).not.toContain('Edit');
   });
 
-  it('annotationHoverContents_shouldTrustOnlyTheAnnotationCommands_andNotTheNoteText', () => {
+  it('annotationHoverContents_shouldTrustOnlyTheToggleCommand_andNotTheNoteText', () => {
     const [note, details] = annotationHoverContents(makeAnnotation({ text: '[x](command:workbench.action.reloadWindow)' }), DOCUMENT_URI, false);
 
-    expect(details.isTrusted).toEqual({ enabledCommands: [TOGGLE_EXPANDED_COMMAND, EDIT_ANNOTATION_COMMAND, DELETE_ANNOTATION_COMMAND] });
+    expect(details.isTrusted).toEqual({ enabledCommands: [TOGGLE_EXPANDED_COMMAND] });
     expect(note.isTrusted).toBeUndefined();
     expect(note.value).toBe('[x](command:workbench.action.reloadWindow)');
   });
 
-  it('annotationHoverContents_shouldOfferCollapse_whenAnnotationIsExpanded', () => {
+  it('annotationHoverContents_shouldOfferClose_whenAnnotationIsOpen', () => {
     const [, details] = annotationHoverContents(makeAnnotation(), DOCUMENT_URI, true);
 
-    expect(details.value).toContain('[Collapse inline]');
+    expect(details.value).toContain('[Close]');
   });
 
   it('annotationHoverContents_shouldEscapeTheAuthorAndFlagStaleness', () => {

@@ -1,11 +1,9 @@
 import * as vscode from 'vscode';
 import type { CodeAnnotation } from '../api/types';
+import { markdownToPlainPreview } from './plainPreview';
 
-export const MAX_INLINE_LENGTH = 80;
 const INLINE_GLYPH = '✎';
-const ELLIPSIS = '…';
 const STALE_SUFFIX = ' (stale)';
-const WHITESPACE_RUN = /\s+/g;
 const ANNOTATION_COLOR = 'editorCodeLens.foreground';
 const STALE_ANNOTATION_COLOR = 'disabledForeground';
 const INLINE_MARGIN = '0 0 0 2em';
@@ -28,11 +26,8 @@ export interface AnnotationDecorations {
   readonly staleMarkers: vscode.Range[];
 }
 
-// After-text is a single CSS line, so line breaks collapse to spaces and only a collapsed note is truncated.
-export function inlineLabel(annotation: Pick<CodeAnnotation, 'text' | 'stale'>, isExpanded: boolean): string {
-  const text = annotation.text.replace(WHITESPACE_RUN, ' ').trim();
-  const shown = isExpanded || text.length <= MAX_INLINE_LENGTH ? text : `${text.slice(0, MAX_INLINE_LENGTH - 1).trimEnd()}${ELLIPSIS}`;
-  return `${INLINE_GLYPH} ${shown}${annotation.stale ? STALE_SUFFIX : ''}`;
+export function inlineLabel(annotation: Pick<CodeAnnotation, 'text' | 'stale'>): string {
+  return `${INLINE_GLYPH} ${markdownToPlainPreview(annotation.text)}${annotation.stale ? STALE_SUFFIX : ''}`;
 }
 
 // Lines the server reports past the end of the shown document (a stale anchor, an unsaved deletion) are clamped.
@@ -46,11 +41,7 @@ export function displayedLines(annotation: Pick<CodeAnnotation, 'line_start' | '
   return { start, end };
 }
 
-export function buildDecorations(
-  annotations: readonly CodeAnnotation[],
-  document: DocumentLines,
-  expandedIds: ReadonlySet<number>,
-): AnnotationDecorations {
+export function buildDecorations(annotations: readonly CodeAnnotation[], document: DocumentLines): AnnotationDecorations {
   const decorations: AnnotationDecorations = { inline: [], staleInline: [], markers: [], staleMarkers: [] };
   for (const annotation of annotations) {
     const lines = displayedLines(annotation, document.lineCount);
@@ -60,7 +51,7 @@ export function buildDecorations(
     const endOfLine = document.lengthOf(lines.end);
     const inline: vscode.DecorationOptions = {
       range: new vscode.Range(lines.end, endOfLine, lines.end, endOfLine),
-      renderOptions: { after: { contentText: inlineLabel(annotation, expandedIds.has(annotation.id)) } },
+      renderOptions: { after: { contentText: inlineLabel(annotation) } },
     };
     const marker = new vscode.Range(lines.start, 0, lines.end, 0);
     (annotation.stale ? decorations.staleInline : decorations.inline).push(inline);

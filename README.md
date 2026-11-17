@@ -60,8 +60,9 @@ A comment made in the editor shows up in the panel's Review tab, and the reverse
 
 Annotations are explanatory notes the agents attach to a line range. They are context for readers, not review comments: no replies, no resolution, and they never block a gate.
 
-- They show in editors of the active workspace's files (local, Remote-SSH and `gw-file`) and on the modified side of the diffs the extension opens, never on the original side. A note sits in grey italics after its last line, cut to about 80 characters, and a thin bar on the left marks its lines. When the annotated code has changed so much that the note lost its anchor, it is dimmer, dashed and marked `(stale)`.
-- Hover the lines for the full text, the author and the time, with **Expand inline**, **Edit** and **Delete**. **Toggle Annotations Expanded** (`Ctrl+Alt+Shift+A`) expands or collapses the notes on the cursor line. A long expanded note wraps only with word wrap on.
+- They show in editors of the active workspace's files (local, Remote-SSH and `gw-file`) and on the modified side of the diffs the extension opens, never on the original side. A note sits in grey italics after its last line as plain text without Markdown syntax, cut to about 80 characters, and a thin bar on the left marks its lines. When the annotated code has changed so much that the note lost its anchor, it is dimmer, dashed and marked `(stale)`.
+- Click the note to open it under the line in a comment box: the full note rendered as Markdown, the author and the time, with **Edit** (edits in place, then **Save** or **Cancel**), **Delete** and **Close**. Click it again to close it. The click lands at the end of the line, so clicking in the empty space right of an annotated line's end toggles it too. A note opens only on demand, so closed notes stay out of VS Code's Comments panel, where open ones are listed under **Annotations**.
+- Hovering the lines shows the full text, the author and the time, with **Open** or **Close**. **Toggle Annotations Expanded** (`Ctrl+Alt+Shift+A`) opens or closes the notes on the cursor line.
 - **Add Annotation** in the editor context menu annotates the selected lines, or the cursor line. Save the file first: the panel anchors the note to the file on disk.
 - **Toggle Annotations** hides or shows them everywhere (`governedWorkflow.annotations.enabled`).
 
