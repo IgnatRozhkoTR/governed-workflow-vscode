@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { WorkspaceSnapshot } from '../diff/diffView';
+import { GIT_SCHEME } from '../fs/gitUris';
 import { BASE_FILE_SCHEME } from '../fs/uris';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import { branchBaseUri, documentLineHashes, filePresence, isAnchoredAt, isAnchoredInWorkingTree } from './baseSideAnchor';
@@ -8,6 +9,8 @@ import { commentPathOf } from './commentPaths';
 import { applyResolvedState, outdatedLabel, threadComments, toEditorRange } from './threadPresentation';
 
 const FIRST_LINE = { start: 1, end: 1 };
+// Documents holding a file at a git ref rather than the working tree: diff base sides and built-in Git documents.
+const SIDE_DOCUMENT_SCHEMES: ReadonlySet<string> = new Set([BASE_FILE_SCHEME, GIT_SCHEME]);
 
 interface ThreadEntry {
   readonly thread: vscode.CommentThread;
@@ -90,7 +93,7 @@ export class CodeThreadSet implements vscode.Disposable {
   }
 
   placeIn(document: vscode.TextDocument): void {
-    if (document.uri.scheme === BASE_FILE_SCHEME) {
+    if (SIDE_DOCUMENT_SCHEMES.has(document.uri.scheme)) {
       void warnOnFailure(`Cannot place comments on ${document.uri.path}`, this.claimOldSideThreads(document));
     }
     this.placeEntriesIn(document);
@@ -128,8 +131,8 @@ export class CodeThreadSet implements vscode.Disposable {
     return true;
   }
 
-  // Threads whose stored line is only found on the base side move to the base document, so old-side
-  // comments stay on the old side after a reload.
+  // Threads whose stored line is only found on a side document move to it, so old-side and commit comments
+  // stay where they were made after a reload.
   private async claimOldSideThreads(document: vscode.TextDocument): Promise<void> {
     const filePath = this.snapshot === undefined ? undefined : commentPathOf(document.uri, this.snapshot, this.locator);
     if (filePath === undefined) {

@@ -49,6 +49,7 @@ Some setups need another extension. VS Code has no optional dependencies, so the
 ## Comments
 
 - In an editor or a diff, use the `+` in the gutter to comment on a line or a range, or the file comment button for the whole file.
+- Commit-by-commit review works in VS Code's own Source Control too: diffs opened from the Source Control graph, a commit's multi-file view (**Open Commit**), the Timeline and **Open Changes** accept comments on both sides, as long as the file is inside the active workspace's working directory. The server stores no commit on a comment, so a comment keeps the file path, the line number in the version you commented on and that line's hash, the same anchor the web panel's commit mode stores. It shows on the working-tree file at the line with that hash, or stays in the commit view when that line no longer exists in the working tree.
 - In the explorer or an editor tab, **Add Workflow Comment** comments on a file or folder.
 - The **Comments** view lists every thread in the workspace by area, with a badge for open ones. Filter, reply and resolve from there. Opening a comment jumps to its line, or to its place in the panel.
 - Resolve or reopen a code thread from its header in the editor. **Resolve All in This File** sits next to it, on file rows of the Comments view, and in the editor title and context menus while the file has open threads.

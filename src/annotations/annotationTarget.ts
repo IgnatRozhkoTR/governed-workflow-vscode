@@ -2,6 +2,7 @@ import type * as vscode from 'vscode';
 import type { WorkspaceRef } from '../api/types';
 import { commentPathOf } from '../comments/commentPaths';
 import type { WorkspaceSnapshot } from '../diff/diffView';
+import { GIT_SCHEME } from '../fs/gitUris';
 import { BASE_FILE_SCHEME, InvalidWorkflowUriError, parseBaseFileUri } from '../fs/uris';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import { splitRepoPath } from '../shared/paths';
@@ -28,6 +29,11 @@ export function annotationTargetOf(
   locator: WorkspaceLocator,
   isModifiedSide: ModifiedSidePredicate,
 ): AnnotationTarget | undefined {
+  // A built-in Git document maps to its working-tree path for comments, but its content is another version of
+  // the file, so working-tree annotations would land on the wrong lines.
+  if (uri.scheme === GIT_SCHEME) {
+    return undefined;
+  }
   try {
     if (uri.scheme === BASE_FILE_SCHEME) {
       return isModifiedSide(uri) ? refTarget(uri, snapshot) : undefined;

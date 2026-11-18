@@ -1,6 +1,7 @@
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ApiError } from '../api/errors';
 import type { WorkspaceSnapshot } from '../diff/diffView';
+import { GIT_SCHEME, parseGitUri } from '../fs/gitUris';
 import { BASE_FILE_SCHEME, REMOTE_FILE_SCHEME, parseBaseFileUri } from '../fs/uris';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import { joinRepoPath } from '../shared/paths';
@@ -17,6 +18,8 @@ export function commentPathOf(uri: vscode.Uri, snapshot: WorkspaceSnapshot, loca
       return uri.authority === snapshot.workspace.projectId ? locator.relPathOf(uri, snapshot.state) : undefined;
     case BASE_FILE_SCHEME:
       return baseDocumentPath(uri, snapshot);
+    case GIT_SCHEME:
+      return gitDocumentPath(uri, snapshot, locator);
     default:
       return undefined;
   }
@@ -37,4 +40,12 @@ function baseDocumentPath(uri: vscode.Uri, snapshot: WorkspaceSnapshot): string 
     return undefined;
   }
   return joinRepoPath(location.repo, location.relPath);
+}
+
+// The server stores no commit on a comment, so a built-in Git document (a commit, its parent or the index) is
+// anchored like a diff base document: its path in the working dir and the line number and hash of the displayed
+// content. That is also what the web panel stores for a comment made in its commit mode.
+function gitDocumentPath(uri: vscode.Uri, snapshot: WorkspaceSnapshot, locator: WorkspaceLocator): string | undefined {
+  const location = parseGitUri(uri);
+  return location === undefined ? undefined : locator.relPathOf(vscode.Uri.file(location.fsPath), snapshot.state);
 }

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as vscode from 'vscode';
-import type { WorkspaceRef } from '../src/api/types';
+import type { WorkspaceRef, WorkspaceState } from '../src/api/types';
 import { CodeThreadSet } from '../src/comments/codeThreadSet';
 import { codeThreads, type CodeThread } from '../src/comments/commentMapping';
 import { lineHash } from '../src/comments/lineHash';
-import type { WorkspaceLocator } from '../src/fs/workspaceLocator';
+import { WorkspaceLocator } from '../src/fs/workspaceLocator';
 import { baseFileUriParts, type UriParts } from '../src/fs/uris';
 import { makeComment, makeState } from './support/fixtures';
 import { CommentThreadCollapsibleState, CommentThreadState, Uri, workspace } from './vscodeStub';
@@ -271,12 +271,27 @@ function baseDocument(relPath: string, lines: string[], repo?: string): vscode.T
   return { uri, getText: () => lines.join('\n') } as unknown as vscode.TextDocument;
 }
 
+function gitDocument(path: string, ref: string, lines: string[]): vscode.TextDocument {
+  const uri = partsUri({ scheme: 'git', authority: '', path, query: JSON.stringify({ path, ref }) });
+  return { uri, getText: () => lines.join('\n') } as unknown as vscode.TextDocument;
+}
+
+function threadSetMappingLocalPaths(): CodeThreadSet {
+  const localPaths = new WorkspaceLocator();
+  const mappingLocator = {
+    fileUri: locator.fileUri,
+    relPathOf: (uri: vscode.Uri, state: WorkspaceState) => localPaths.relPathOf(uri, state),
+  };
+  return new CodeThreadSet(controller as unknown as vscode.CommentController, mappingLocator as unknown as WorkspaceLocator);
+}
+
 function workingDocument(lines: string[]): vscode.TextDocument {
   return { lineCount: lines.length, lineAt: (index: number) => ({ text: lines[index] }), getText: () => lines.join('\n') } as unknown as vscode.TextDocument;
 }
 
 describe('CodeThreadSet base side', () => {
   const BASE_SNAPSHOT = { workspace: REF, state: makeState({ source_branch: 'main' }) };
+  const GIT_SNAPSHOT = { workspace: REF, state: makeState({ source_branch: 'main', working_dir: '/ws' }) };
   const stat = vi.fn();
 
   beforeEach(() => {
@@ -296,6 +311,31 @@ describe('CodeThreadSet base side', () => {
     expect(created[0].dispose).toHaveBeenCalledOnce();
     expect(created[1].uri.toString()).toContain('gw-base://p/b/a.ts');
     expect(created[1].label).toBeUndefined();
+  });
+
+  it('placeIn_shouldMoveThreadToGitDocument_whenStoredLineOnlyMatchesTheCommitContent', async () => {
+    const gitSet = threadSetMappingLocalPaths();
+    workspace.openTextDocument.mockResolvedValue(workingDocument(['x', 'rewritten later']));
+    gitSet.sync(GIT_SNAPSHOT, [codeThread(1, { line_start: 2, line_end: 2, line_hash: lineHash('as committed') })]);
+
+    gitSet.placeIn(gitDocument('/ws/a.ts', 'abc123', ['x', 'as committed']));
+
+    await vi.waitFor(() => expect(created).toHaveLength(2));
+    expect(created[0].dispose).toHaveBeenCalledOnce();
+    expect(created[1].uri.toString()).toContain('git:///ws/a.ts');
+  });
+
+  it('placeIn_shouldKeepThreadOnWorkingTree_whenGitDocumentLineIsUnchangedInWorkingTree', async () => {
+    const gitSet = threadSetMappingLocalPaths();
+    workspace.openTextDocument.mockResolvedValue(workingDocument(['x', 'same line']));
+    gitSet.sync(GIT_SNAPSHOT, [codeThread(1, { line_start: 2, line_end: 2, line_hash: lineHash('same line') })]);
+
+    gitSet.placeIn(gitDocument('/ws/a.ts', 'abc123', ['x', 'same line']));
+
+    await vi.waitFor(() => expect(workspace.openTextDocument).toHaveBeenCalled());
+    await flushPromises();
+    expect(created).toHaveLength(1);
+    expect(created[0].dispose).not.toHaveBeenCalled();
   });
 
   it('placeIn_shouldKeepThreadOnWorkingTree_whenLinesWereInsertedAboveTheStoredLine', async () => {
