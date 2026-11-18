@@ -1,6 +1,7 @@
 import type { JSX } from 'preact';
 import { useEffect, useId, useState } from 'preact/hooks';
 import { useT } from '../i18n/i18n';
+import type { SubmitOn } from '../lib/submitKey';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
@@ -29,6 +30,7 @@ export interface PromptOptions {
   readonly fieldLabel?: string;
   readonly initialValue?: string;
   readonly multiline?: boolean;
+  readonly submitOn?: SubmitOn;
   readonly required?: boolean;
   readonly confirmLabel?: string;
   readonly danger?: boolean;
@@ -134,7 +136,7 @@ function ConfirmDialog({ request }: { readonly request: Extract<DialogRequest, {
 
 function PromptDialog({ request }: { readonly request: Extract<DialogRequest, { kind: 'prompt' }> }): JSX.Element {
   const t = useT();
-  const { title, message, notices = [], placeholder, fieldLabel, initialValue = '', multiline = false, required = false, confirmLabel, danger = false } = request.options;
+  const { title, message, notices = [], placeholder, fieldLabel, initialValue = '', multiline = false, submitOn, required = false, confirmLabel, danger = false } = request.options;
   const [value, setValue] = useState(initialValue);
   const fieldId = useId();
   const isSubmittable = !required || value.trim() !== '';
@@ -154,7 +156,7 @@ function PromptDialog({ request }: { readonly request: Extract<DialogRequest, { 
       {message !== undefined && <p class="gw-dialog-message">{message}</p>}
       <DialogNotices notices={notices} heading={t('vsc.warning.heading')} onLeave={() => request.settle(undefined)} />
       {fieldLabel !== undefined && <label class="gw-dialog-field-label" for={fieldId}>{fieldLabel}</label>}
-      <TextField id={fieldId} value={value} onInput={setValue} placeholder={placeholder} ariaLabel={fieldLabel === undefined ? title : undefined} multiline={multiline} rows={5} autoFocus onSubmit={submit} />
+      <TextField id={fieldId} value={value} onInput={setValue} placeholder={placeholder} ariaLabel={fieldLabel === undefined ? title : undefined} multiline={multiline} submitOn={submitOn} rows={5} autoFocus onSubmit={submit} />
     </Dialog>
   );
 }

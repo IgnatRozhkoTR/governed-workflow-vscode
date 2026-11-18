@@ -98,6 +98,7 @@ export function usePlanStatusActions(): PlanStatusActions {
       message: t('vsc.gate.sendBackPlanConfirm'),
       placeholder: t('vsc.gate.feedbackPlaceholder'),
       multiline: true,
+      submitOn: 'enter',
       confirmLabel: t('vsc.gate.sendBackPlan'),
       danger: true,
     });

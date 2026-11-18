@@ -92,7 +92,7 @@ function ApplyConfirmation({ proposal, actions, onClose }: ApplyConfirmationProp
       <div class="gw-proposal-confirm-preview">
         <ApplyPreviewView preview={applyPreview(proposal)} />
       </div>
-      <TextField value={note} onInput={setNote} placeholder={t('vsc.reflection.resultPlaceholder')} ariaLabel={t('vsc.reflection.result')} multiline rows={2} disabled={actions.pending} autoFocus />
+      <TextField value={note} onInput={setNote} placeholder={t('vsc.reflection.resultPlaceholder')} ariaLabel={t('vsc.reflection.result')} multiline rows={2} disabled={actions.pending} autoFocus submitOn="enter" onSubmit={() => void confirm()} />
       <Toolbar align="end">
         <Button size="sm" label={t('vsc.common.cancel')} disabled={actions.pending} onClick={onClose} />
         <Button size="sm" variant="primary" icon="check" label={t('vsc.reflection.markAsApplied')} title={t('vsc.reflection.markAsAppliedHint')} busy={actions.pending} disabled={actions.pending} onClick={confirm} />

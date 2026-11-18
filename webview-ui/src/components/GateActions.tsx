@@ -283,6 +283,7 @@ function useGateDialogs(gate: PendingGate, copy: GateCopy, notices: readonly Dia
       placeholder: t('vsc.gate.feedbackPlaceholder'),
       fieldLabel: t('vsc.gate.feedbackLabel'),
       multiline: true,
+      submitOn: 'enter',
       confirmLabel: t(copy.rejectKey),
       danger: true,
     }))?.trim(),

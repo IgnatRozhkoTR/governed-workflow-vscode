@@ -528,6 +528,11 @@
     ],
     "keybindings": [
       {
+        "command": "editor.action.submitComment",
+        "key": "enter",
+        "when": "commentEditorFocused && !suggestWidgetVisible && !inlineSuggestionVisible && !commentIsEmpty && commentController =~ /^governedWorkflow\\./"
+      },
+      {
         "command": "governedWorkflow.showTerminal",
         "key": "ctrl+alt+`"
       },
@@ -952,12 +957,12 @@
       "comments/comment/context": [
         {
           "command": "governedWorkflow.annotations.cancelEdit",
-          "group": "inline@1",
+          "group": "inline@2",
           "when": "commentController == governedWorkflow.annotations"
         },
         {
           "command": "governedWorkflow.annotations.saveEdit",
-          "group": "inline@2",
+          "group": "inline@1",
           "when": "commentController == governedWorkflow.annotations"
         }
       ],

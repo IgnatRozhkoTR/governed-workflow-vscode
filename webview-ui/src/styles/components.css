@@ -429,6 +429,7 @@ body.vscode-high-contrast-light {
 .gw-dialog-header h2 { margin: 0; font-size: 1.05em; }
 .gw-dialog-body { padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
 .gw-dialog-message { margin: 0; white-space: pre-wrap; }
+.gw-input-hint { margin-top: -2px; font-size: 0.85em; color: var(--gw-input-placeholder); }
 .gw-dialog-field-label { margin-bottom: -4px; font-weight: 600; }
 .gw-dialog-footer { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--gw-border); }
 
