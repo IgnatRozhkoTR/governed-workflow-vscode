@@ -4,6 +4,7 @@ import { ApiError } from '../api/errors';
 import type { PendingGate, WorkspaceRef, WorkspaceState } from '../api/types';
 
 const GATE_PENDING_CONTEXT_KEY = 'governedWorkflow.gatePending';
+const GATE_COLOR_ID = 'governedWorkflow.gateForeground';
 const APPROVE_LABEL = 'Approve';
 const REJECT_LABEL = 'Reject';
 
@@ -24,6 +25,7 @@ class GateController implements vscode.Disposable {
 
   constructor(private readonly deps: GateCommandsDeps) {
     this.statusItem.command = 'governedWorkflow.gateActions';
+    this.statusItem.color = new vscode.ThemeColor(GATE_COLOR_ID);
   }
 
   update(state: WorkspaceState | undefined): void {

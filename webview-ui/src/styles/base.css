@@ -19,6 +19,7 @@
   --gw-input-placeholder: var(--vscode-input-placeholderForeground);
   --gw-success: var(--vscode-testing-iconPassed);
   --gw-warning: var(--vscode-editorWarning-foreground);
+  --gw-gate: var(--vscode-governedWorkflow-gateForeground);
   --gw-danger: var(--vscode-errorForeground);
   --gw-info: var(--vscode-editorInfo-foreground);
   --gw-font: var(--vscode-font-family);

@@ -6,6 +6,7 @@ import { isPlanPending } from './launcherItems';
 const HAS_WORKSPACE_CONTEXT_KEY = 'governedWorkflow.hasWorkspace';
 const PLAN_PENDING_CONTEXT_KEY = 'governedWorkflow.planPending';
 const YOLO_CONTEXT_KEY = 'governedWorkflow.yolo';
+const GATE_COLOR_ID = 'governedWorkflow.gateForeground';
 const OPEN_PLAN_COMMAND = 'governedWorkflow.openPlan';
 
 // Mirrors the active workspace into context keys (menu visibility) and the "Plan: pending" status bar item.
@@ -16,6 +17,7 @@ class WorkspaceIndicators implements vscode.Disposable {
     this.planItem.text = '$(checklist) Plan: pending';
     this.planItem.tooltip = 'The plan is waiting for approval. Open it in Workspace Control.';
     this.planItem.command = OPEN_PLAN_COMMAND;
+    this.planItem.color = new vscode.ThemeColor(GATE_COLOR_ID);
   }
 
   update(): void {

@@ -38,7 +38,7 @@ function toTreeItem(item: LauncherItem): vscode.TreeItem {
   const treeItem = new vscode.TreeItem(item.label, vscode.TreeItemCollapsibleState.None);
   treeItem.id = `launcher:${item.id}`;
   treeItem.description = item.description;
-  treeItem.iconPath = new vscode.ThemeIcon(item.icon);
+  treeItem.iconPath = new vscode.ThemeIcon(item.icon, item.colorId === undefined ? undefined : new vscode.ThemeColor(item.colorId));
   treeItem.contextValue = item.contextValue;
   treeItem.tooltip = `Open ${item.label} in Workspace Control`;
   treeItem.command = { command: OPEN_CONTROL_PANEL_COMMAND, title: 'Open Workspace Control', arguments: [item.nav] };

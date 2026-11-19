@@ -3,6 +3,7 @@ import { isApprovalBlocker } from '../comments/commentMapping';
 import type { NavTarget } from '../shared/navigation';
 
 export const PLAN_PENDING_CONTEXT_VALUE = 'gwPlanPending';
+const GATE_COLOR_ID = 'governedWorkflow.gateForeground';
 const PENDING_PLAN_STATUS = 'pending';
 const NO_PLAN_STATUS = 'no plan';
 const OPEN_DISCUSSION_STATUS = 'open';
@@ -17,6 +18,7 @@ export interface LauncherItem {
   readonly icon: string;
   readonly nav: NavTarget;
   readonly contextValue?: string;
+  readonly colorId?: string;
 }
 
 const STATIC_ITEMS: readonly LauncherItem[] = [
@@ -53,7 +55,7 @@ function gateItems(state: WorkspaceState): LauncherItem[] {
   if (gate === null || gate === undefined) {
     return [];
   }
-  return [{ id: 'gate', label: 'Gate waiting', description: gate.phase, icon: 'shield', nav: { tab: 'phase' } }];
+  return [{ id: 'gate', label: 'Gate waiting', description: gate.phase, icon: 'shield', nav: { tab: 'phase' }, colorId: GATE_COLOR_ID }];
 }
 
 function planItem(state: WorkspaceState): LauncherItem {

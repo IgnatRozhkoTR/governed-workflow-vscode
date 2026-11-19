@@ -128,7 +128,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--gw-warning);
+  background: var(--gw-gate);
   outline: 1px solid var(--vscode-contrastBorder, transparent);
 }
 
@@ -166,7 +166,7 @@
   margin: 0 auto;
   padding: 4px 12px;
   border-bottom: 1px solid var(--gw-border);
-  border-left: 3px solid var(--gw-warning);
+  border-left: 3px solid var(--gw-gate);
   background: var(--gw-hover);
 }
 

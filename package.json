@@ -4,6 +4,7 @@
   "description": "VS Code client for Governed Workflow: the Workspace Control panel with every web tab, comments in editors, diffs and panels, branch review, gate and plan approval, and the Claude session through the admin panel API.",
   "version": "0.2.29",
   "publisher": "ignatrozhko",
+  "icon": "media/icon.png",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -1004,7 +1005,39 @@
       "terminal.integrated.commandsToSkipShell": [
         "governedWorkflow.toggleTerminalFullScreen"
       ]
-    }
+    },
+    "colors": [
+      {
+        "id": "governedWorkflow.accent",
+        "description": "Governed Workflow accent for links, badges and the active item.",
+        "defaults": {
+          "dark": "#8EA2FF",
+          "light": "#2B4BFF",
+          "highContrast": "#B9C5FF",
+          "highContrastLight": "#22338F"
+        }
+      },
+      {
+        "id": "governedWorkflow.gateForeground",
+        "description": "A gate that waits for the human.",
+        "defaults": {
+          "dark": "#FF8A3D",
+          "light": "#B34700",
+          "highContrast": "#FFB07A",
+          "highContrastLight": "#8F3A00"
+        }
+      },
+      {
+        "id": "governedWorkflow.okForeground",
+        "description": "Passed, approved, verified.",
+        "defaults": {
+          "dark": "#7FD1A6",
+          "light": "#1E7A4E",
+          "highContrast": "#A9E2C3",
+          "highContrastLight": "#165337"
+        }
+      }
+    ]
   },
   "scripts": {
     "build": "node scripts/build.mjs",

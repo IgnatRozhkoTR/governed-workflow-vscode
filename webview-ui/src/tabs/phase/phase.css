@@ -53,7 +53,7 @@
 }
 
 .gw-phase-track-gate {
-  box-shadow: inset 0 -3px 0 var(--gw-warning);
+  box-shadow: inset 0 -3px 0 var(--gw-gate);
 }
 
 /* Up to two lines, broken between words only; the ellipsis appears only past the second line. The segment title keeps the full name.
@@ -90,11 +90,11 @@
 /* The light theme's warning hue is about 3.1:1 on white, so light themes darken it with the foreground to clear 4.5:1;
    HC themes already use the foreground for status text. */
 .gw-phase-caption-gate {
-  color: var(--gw-status-text, var(--gw-phase-gate-caption, var(--gw-warning)));
+  color: var(--gw-status-text, var(--gw-phase-gate-caption, var(--gw-gate)));
 }
 
 body.vscode-light .gw-phase-bar {
-  --gw-phase-gate-caption: color-mix(in srgb, var(--gw-warning) 40%, var(--gw-fg));
+  --gw-phase-gate-caption: color-mix(in srgb, var(--gw-gate) 40%, var(--gw-fg));
 }
 
 .gw-phase-bar-compact {
