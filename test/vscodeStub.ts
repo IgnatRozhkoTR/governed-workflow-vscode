@@ -24,6 +24,7 @@ export class EventEmitter<T> implements Disposable {
 }
 
 const windowStateEmitter = new EventEmitter<{ focused: boolean }>();
+export const tabGroupsEmitter = new EventEmitter<unknown>();
 
 export class Uri {
   private constructor(
@@ -164,8 +165,15 @@ export const window = {
   showInformationMessage: vi.fn(),
   showTextDocument: vi.fn(),
   createTerminal: vi.fn(),
-  tabGroups: { all: [] as { tabs: FakeTab[] }[] },
+  tabGroups: {
+    all: [] as FakeTabGroup[],
+    activeTabGroup: undefined as FakeTabGroup | undefined,
+    onDidChangeTabGroups: tabGroupsEmitter.event,
+  },
+  activeTerminal: undefined as unknown,
   onDidCloseTerminal: vi.fn(),
+  onDidChangeActiveTerminal: vi.fn(() => ({ dispose: vi.fn() })),
+  setStatusBarMessage: vi.fn(),
   withProgress: vi.fn((_options: unknown, task: () => unknown) => task()),
 };
 
@@ -177,6 +185,12 @@ export class TabInputTerminal {}
 export interface FakeTab {
   readonly label: string;
   readonly input: unknown;
+}
+
+export interface FakeTabGroup {
+  readonly tabs: FakeTab[];
+  isActive?: boolean;
+  viewColumn?: number;
 }
 
 export const commands = {

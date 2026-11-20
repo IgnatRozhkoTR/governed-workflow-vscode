@@ -1,31 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import type { WorkspaceRef } from '../src/api/types';
 import { readTerminalLayout, TerminalPlacement, writeTerminalLayout } from '../src/terminal/terminalLayout';
 import { registerTerminalLayout, TERMINAL_LAYOUT_COMMANDS } from '../src/terminal/terminalLayoutCommands';
 import { useTerminalSettings, type FakeTerminalConfiguration } from './support/terminalLayoutConfig';
+import { COMMANDS, executedCommands, terminalTab, useTabGroups } from './support/terminalTabs';
+import { tabGroupsEmitter } from './vscodeStub';
 
 const REF = { projectId: 1, branch: 'feature/x' } as WorkspaceRef;
-const MOVE_TO_PANEL = 'workbench.action.terminal.moveToTerminalPanel';
-const MOVE_TO_EDITOR = 'workbench.action.terminal.moveToEditor';
-const TOGGLE_MAXIMIZE = 'workbench.action.toggleMaximizeEditorGroup';
 
 const terminal = { name: 'Claude: feature/x', show: vi.fn() };
 let terminalFor: ReturnType<typeof vi.fn>;
 let activeWorkspace: { workspace: WorkspaceRef | undefined; onDidChange: ReturnType<typeof vi.fn> };
 let handlers: Map<string, () => Promise<void>>;
 let settings: FakeTerminalConfiguration;
+let placement: TerminalPlacement;
 
 function terminalInEditor(): void {
-  vscode.window.tabGroups.all = [{ tabs: [{ label: terminal.name, input: new vscode.TabInputTerminal() }] }, { tabs: [] }];
+  useTabGroups({ tabs: [terminalTab(terminal.name)], isActive: true }, { tabs: [] });
 }
 
 function terminalInPanel(): void {
-  vscode.window.tabGroups.all = [{ tabs: [] }, { tabs: [] }];
-}
-
-function executedCommands(): unknown[] {
-  return vi.mocked(vscode.commands.executeCommand).mock.calls.map(([command]) => command);
+  useTabGroups({ tabs: [], isActive: true }, { tabs: [] });
 }
 
 function run(command: string): Promise<void> {
@@ -36,9 +32,14 @@ function run(command: string): Promise<void> {
   return handler();
 }
 
+async function enterFullScreenThenClearCalls(): Promise<void> {
+  await run(TERMINAL_LAYOUT_COMMANDS.fullscreen);
+  vi.mocked(vscode.commands.executeCommand).mockClear();
+}
+
 function register(): void {
   registerTerminalLayout({ subscriptions: [] } as never, {
-    placement: new TerminalPlacement(),
+    placement,
     terminals: { terminalFor } as never,
     activeWorkspace: activeWorkspace as never,
   });
@@ -53,46 +54,57 @@ beforeEach(() => {
   }) as never);
   terminalFor = vi.fn(() => terminal);
   activeWorkspace = { workspace: REF, onDidChange: vi.fn(() => ({ dispose: vi.fn() })) };
-  settings = useTerminalSettings({ layout: 'editor' });
+  settings = useTerminalSettings({ layout: 'panel' });
+  placement = new TerminalPlacement();
   terminalInEditor();
 });
 
+afterEach(() => {
+  placement.dispose();
+});
+
 describe('readTerminalLayout', () => {
-  it('readTerminalLayout_shouldDefaultToEditor_whenNothingIsSet', () => {
+  it('readTerminalLayout_shouldDefaultToFullscreen_whenNothingIsSet', () => {
     useTerminalSettings({});
-
-    expect(readTerminalLayout()).toBe('editor');
-  });
-
-  it('readTerminalLayout_shouldMigrateToFullscreen_whenLegacyMaximizeIsTrueAndLayoutUnset', () => {
-    useTerminalSettings({ maximize: true });
 
     expect(readTerminalLayout()).toBe('fullscreen');
   });
 
-  it('readTerminalLayout_shouldPreferLayout_whenBothSettingsAreSet', () => {
+  it('readTerminalLayout_shouldMigrateToFullscreen_whenRetiredEditorLayoutIsSet', () => {
+    useTerminalSettings({ layout: 'editor' });
+
+    expect(readTerminalLayout()).toBe('fullscreen');
+  });
+
+  it('readTerminalLayout_shouldMigrateToFullscreen_whenOnlyRetiredMaximizeIsSet', () => {
+    useTerminalSettings({ maximize: false });
+
+    expect(readTerminalLayout()).toBe('fullscreen');
+  });
+
+  it('readTerminalLayout_shouldKeepPanel_whenPanelIsSet', () => {
     useTerminalSettings({ layout: 'panel', maximize: true });
 
     expect(readTerminalLayout()).toBe('panel');
   });
 
-  it('readTerminalLayout_shouldFallBackToLegacy_whenLayoutIsInvalid', () => {
-    useTerminalSettings({ layout: 'sideways', maximize: false });
+  it('readTerminalLayout_shouldPreferWorkspaceValue_whenBothScopesAreSet', () => {
+    useTerminalSettings({ layout: 'fullscreen', workspaceLayout: 'panel' });
 
-    expect(readTerminalLayout()).toBe('editor');
+    expect(readTerminalLayout()).toBe('panel');
   });
 });
 
 describe('writeTerminalLayout', () => {
   it('writeTerminalLayout_shouldWriteUserSettings_whenNoWorkspaceOverride', async () => {
-    await writeTerminalLayout('panel');
+    await writeTerminalLayout('fullscreen');
 
-    expect(settings.update).toHaveBeenCalledWith('terminal.layout', 'panel', vscode.ConfigurationTarget.Global);
-    expect(readTerminalLayout()).toBe('panel');
+    expect(settings.update).toHaveBeenCalledWith('terminal.layout', 'fullscreen', vscode.ConfigurationTarget.Global);
+    expect(readTerminalLayout()).toBe('fullscreen');
   });
 
   it('writeTerminalLayout_shouldWriteWorkspaceSettings_whenWorkspaceOverridesLayout', async () => {
-    settings = useTerminalSettings({ layout: 'editor', workspaceLayout: 'fullscreen' });
+    settings = useTerminalSettings({ layout: 'fullscreen', workspaceLayout: 'fullscreen' });
 
     await writeTerminalLayout('panel');
 
@@ -102,65 +114,73 @@ describe('writeTerminalLayout', () => {
 });
 
 describe('layout switching', () => {
-  it('switchTo_shouldMoveOurTerminalToPanel_whenEditorToPanel', async () => {
-    register();
-
-    await run(TERMINAL_LAYOUT_COMMANDS.panel);
-
-    expect(settings.values.layout).toBe('panel');
-    expect(terminal.show).toHaveBeenCalledWith(false);
-    expect(terminal.show.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(vscode.commands.executeCommand).mock.invocationCallOrder[0]);
-    expect(executedCommands()).toEqual([MOVE_TO_PANEL]);
-  });
-
-  it('switchTo_shouldMoveToEditorThenMaximize_whenPanelToFullscreen', async () => {
-    settings = useTerminalSettings({ layout: 'panel' });
-    terminalInPanel();
+  it('switchTo_shouldMaximizeAndHideSideBars_whenTerminalIsAlreadyInEditor', async () => {
     register();
 
     await run(TERMINAL_LAYOUT_COMMANDS.fullscreen);
 
     expect(settings.values.layout).toBe('fullscreen');
-    expect(executedCommands()).toEqual([MOVE_TO_EDITOR, TOGGLE_MAXIMIZE]);
+    expect(terminal.show).toHaveBeenCalledWith(false);
+    expect(executedCommands()).toEqual([COMMANDS.maximizeHideSideBars]);
   });
 
-  it('switchTo_shouldOnlyUnmaximize_whenFullscreenToEditor', async () => {
+  it('switchTo_shouldMoveToEditorThenMaximize_whenPanelToFullscreen', async () => {
+    terminalInPanel();
     register();
+
     await run(TERMINAL_LAYOUT_COMMANDS.fullscreen);
-    vi.mocked(vscode.commands.executeCommand).mockClear();
 
-    await run(TERMINAL_LAYOUT_COMMANDS.editor);
-
-    expect(settings.values.layout).toBe('editor');
-    expect(executedCommands()).toEqual([TOGGLE_MAXIMIZE]);
+    expect(executedCommands()).toEqual([COMMANDS.moveToEditor, COMMANDS.maximizeHideSideBars]);
   });
 
-  it('switchTo_shouldUnmaximizeBeforeMoving_whenFullscreenToPanel', async () => {
+  it('switchTo_shouldActivateTerminalGroupFirst_whenAnotherGroupIsActive', async () => {
+    useTabGroups({ tabs: [] , isActive: true }, { tabs: [terminalTab(terminal.name)] });
     register();
+
     await run(TERMINAL_LAYOUT_COMMANDS.fullscreen);
-    vi.mocked(vscode.commands.executeCommand).mockClear();
+
+    expect(executedCommands()).toEqual([COMMANDS.focusSecondGroup, COMMANDS.maximizeHideSideBars]);
+  });
+
+  it('switchTo_shouldRestoreGroupsAndSideBarBeforeMoving_whenFullscreenToPanel', async () => {
+    register();
+    await enterFullScreenThenClearCalls();
 
     await run(TERMINAL_LAYOUT_COMMANDS.panel);
 
-    expect(executedCommands()).toEqual([TOGGLE_MAXIMIZE, MOVE_TO_PANEL]);
+    expect(settings.values.layout).toBe('panel');
+    expect(executedCommands()).toEqual([COMMANDS.toggleMaximizeGroup, COMMANDS.showSideBar, COMMANDS.moveToPanel]);
   });
 
-  it('switchTo_shouldNotUnmaximize_whenGroupWasNotMaximizedByUs', async () => {
-    settings = useTerminalSettings({ layout: 'fullscreen' });
+  it('switchTo_shouldOnlyReopenSideBar_whenSingleGroupWasNotMaximized', async () => {
+    useTabGroups({ tabs: [terminalTab(terminal.name)], isActive: true });
     register();
+    await enterFullScreenThenClearCalls();
 
-    await run(TERMINAL_LAYOUT_COMMANDS.editor);
+    await run(TERMINAL_LAYOUT_COMMANDS.panel);
 
-    expect(executedCommands()).toEqual([]);
+    expect(executedCommands()).toEqual([COMMANDS.showSideBar, COMMANDS.moveToPanel]);
   });
 
-  it('switchTo_shouldSkipMaximize_whenOnlyOneEditorGroupExists', async () => {
-    vscode.window.tabGroups.all = [{ tabs: [{ label: terminal.name, input: new vscode.TabInputTerminal() }] }];
+  it('switchTo_shouldNotToggleMaximize_whenVsCodeDroppedItAfterAnotherGroupActivated', async () => {
+    const [terminalGroup, otherGroup] = useTabGroups({ tabs: [terminalTab(terminal.name)], isActive: true }, { tabs: [] });
+    register();
+    await enterFullScreenThenClearCalls();
+    terminalGroup.isActive = false;
+    otherGroup.isActive = true;
+    tabGroupsEmitter.fire({});
+
+    await run(TERMINAL_LAYOUT_COMMANDS.panel);
+
+    expect(executedCommands()).toEqual([COMMANDS.showSideBar, COMMANDS.moveToPanel]);
+  });
+
+  it('switchTo_shouldNotRestoreLayout_whenFullscreenWasNeverEntered', async () => {
     register();
 
-    await run(TERMINAL_LAYOUT_COMMANDS.fullscreen);
+    await run(TERMINAL_LAYOUT_COMMANDS.panel);
 
-    expect(executedCommands()).toEqual([]);
+    expect(executedCommands()).toEqual([COMMANDS.moveToPanel]);
   });
 
   it('switchTo_shouldOnlyRememberLayout_whenTerminalIsNotOpen', async () => {
@@ -174,8 +194,7 @@ describe('layout switching', () => {
     expect(executedCommands()).toEqual([]);
   });
 
-  it('toggleFullScreen_shouldReturnToPreviousLayout_whenToggledTwice', async () => {
-    settings = useTerminalSettings({ layout: 'panel' });
+  it('toggleFullScreen_shouldSwitchBetweenPanelAndFullscreen_whenToggledTwice', async () => {
     terminalInPanel();
     register();
 
@@ -187,27 +206,58 @@ describe('layout switching', () => {
     await run(TERMINAL_LAYOUT_COMMANDS.toggleFullScreen);
 
     expect(settings.values.layout).toBe('panel');
-    expect(executedCommands()).toEqual([TOGGLE_MAXIMIZE, MOVE_TO_PANEL]);
+    expect(executedCommands()).toEqual([COMMANDS.toggleMaximizeGroup, COMMANDS.showSideBar, COMMANDS.moveToPanel]);
   });
 
-  it('pick_shouldMarkCurrentLayoutAndApplySelection', async () => {
-    vi.mocked(vscode.window.showQuickPick).mockImplementation((async (items: { label: string; layout: string }[]) => {
-      expect(items.map((item) => item.label)).toEqual(['Panel', '$(check) Editor', 'Full screen']);
-      return items[0];
+  it('pick_shouldOfferTwoLayoutsAndApplySelection', async () => {
+    settings = useTerminalSettings({ layout: 'editor' });
+    vi.mocked(vscode.window.showQuickPick).mockImplementation((async (items: { label: string }[]) => {
+      expect(items.map((item) => item.label)).toEqual(['$(check) Full screen', 'Panel']);
+      return items[1];
     }) as never);
     register();
 
     await run(TERMINAL_LAYOUT_COMMANDS.pick);
 
     expect(settings.values.layout).toBe('panel');
-    expect(executedCommands()).toEqual([MOVE_TO_PANEL]);
+    expect(executedCommands()).toEqual([COMMANDS.moveToPanel]);
+  });
+
+  it('register_shouldNotRegisterEditorLayoutCommand', () => {
+    register();
+
+    expect([...handlers.keys()]).not.toContain('governedWorkflow.terminalLayoutEditor');
+  });
+});
+
+describe('TerminalPlacement.hide', () => {
+  it('hide_shouldShowPreviousEditorAndLeaveFullScreen_whenTerminalIsInEditor', async () => {
+    await placement.present(terminal as never, 'fullscreen');
+    vi.mocked(vscode.commands.executeCommand).mockClear();
+
+    await placement.hide(terminal as never);
+
+    expect(executedCommands()).toEqual([
+      COMMANDS.showPreviousEditor,
+      COMMANDS.toggleMaximizeGroup,
+      COMMANDS.showSideBar,
+      COMMANDS.focusActiveGroup,
+    ]);
+  });
+
+  it('hide_shouldToggleTerminalView_whenTerminalIsInPanel', async () => {
+    terminalInPanel();
+
+    await placement.hide(terminal as never);
+
+    expect(executedCommands()).toEqual([COMMANDS.toggleTerminalView]);
   });
 });
 
 describe('layout status bar item', () => {
-  it('statusItem_shouldShowCurrentLayout_whenWorkspaceIsActive', () => {
+  it('statusItem_shouldShowFullScreen_whenRetiredEditorLayoutIsSet', () => {
     const before = vscode.statusBarItems.length;
-    settings = useTerminalSettings({ maximize: true });
+    settings = useTerminalSettings({ layout: 'editor' });
 
     register();
 

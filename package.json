@@ -48,23 +48,15 @@
         "governedWorkflow.terminal.layout": {
           "type": "string",
           "enum": [
-            "panel",
-            "editor",
-            "fullscreen"
+            "fullscreen",
+            "panel"
           ],
-          "default": "editor",
+          "default": "fullscreen",
           "enumDescriptions": [
-            "The terminal panel. Drag the Terminal view to the bottom panel or the secondary side bar to choose where it docks.",
-            "A tab in the active editor group.",
-            "A tab in the active editor group, with that group maximised so the other groups are hidden."
+            "A tab in the active editor group, maximised with both side bars hidden. Leaving full screen restores the editor groups and reopens the primary side bar.",
+            "The terminal panel, docked wherever you put the panel (bottom or right)."
           ],
-          "markdownDescription": "Where the workspace's Claude terminal opens. Switch with the status bar item, **Claude Terminal Layout…** or **Toggle Claude Terminal Full Screen**; an open terminal is moved without reconnecting. When unset, `#governedWorkflow.terminal.maximize#` set to `true` means `fullscreen`."
-        },
-        "governedWorkflow.terminal.maximize": {
-          "type": "boolean",
-          "default": true,
-          "description": "Maximize the editor area when a Claude session terminal opens.",
-          "markdownDeprecationMessage": "Use `#governedWorkflow.terminal.layout#` instead. While the layout is unset, `true` here selects `fullscreen`."
+          "markdownDescription": "Where the workspace's Claude terminal opens. Switch with the status bar item, **Claude Terminal Layout…** or **Toggle Claude Terminal Full Screen**; an open terminal is moved without reconnecting. The retired `editor` value means `fullscreen`."
         },
         "governedWorkflow.onSelectWorkspace": {
           "type": "string",
@@ -292,6 +284,16 @@
         "icon": "$(layout-panel)"
       },
       {
+        "command": "governedWorkflow.openChangesTab",
+        "title": "Open Changes Tab",
+        "category": "Governed Workflow"
+      },
+      {
+        "command": "governedWorkflow.openScratchpads",
+        "title": "Open Scratchpads",
+        "category": "Governed Workflow"
+      },
+      {
         "command": "governedWorkflow.openPlan",
         "title": "Open Plan",
         "category": "Governed Workflow",
@@ -340,6 +342,11 @@
         "icon": "$(terminal)"
       },
       {
+        "command": "governedWorkflow.toggleTerminal",
+        "title": "Toggle Claude Terminal",
+        "category": "Governed Workflow"
+      },
+      {
         "command": "governedWorkflow.terminalLayout",
         "title": "Claude Terminal Layout…",
         "category": "Governed Workflow",
@@ -348,11 +355,6 @@
       {
         "command": "governedWorkflow.terminalLayoutPanel",
         "title": "Claude Terminal Layout: Panel",
-        "category": "Governed Workflow"
-      },
-      {
-        "command": "governedWorkflow.terminalLayoutEditor",
-        "title": "Claude Terminal Layout: Editor",
         "category": "Governed Workflow"
       },
       {
@@ -399,6 +401,11 @@
         "title": "Attach Image to Claude…",
         "category": "Governed Workflow",
         "icon": "$(file-media)"
+      },
+      {
+        "command": "governedWorkflow.pasteImage",
+        "title": "Paste Clipboard Image into Claude",
+        "category": "Governed Workflow"
       },
       {
         "command": "governedWorkflow.commentOnResource",
@@ -534,12 +541,54 @@
         "when": "commentEditorFocused && !suggestWidgetVisible && !inlineSuggestionVisible && !commentIsEmpty && commentController =~ /^governedWorkflow\\./"
       },
       {
+        "command": "governedWorkflow.toggleTerminal",
+        "key": "ctrl+alt+`",
+        "mac": "ctrl+alt+`"
+      },
+      {
+        "command": "governedWorkflow.toggleTerminal",
+        "key": "ctrl+alt+`",
+        "mac": "ctrl+alt+`",
+        "when": "terminalFocus && governedWorkflow.claudeTerminalActive",
+        "args": {
+          "isFocused": true
+        }
+      },
+      {
         "command": "governedWorkflow.showTerminal",
-        "key": "ctrl+alt+`"
+        "key": "ctrl+alt+t",
+        "mac": "ctrl+alt+t"
       },
       {
         "command": "governedWorkflow.toggleTerminalFullScreen",
-        "key": "ctrl+alt+shift+enter"
+        "key": "ctrl+alt+shift+enter",
+        "mac": "ctrl+alt+shift+enter"
+      },
+      {
+        "command": "governedWorkflow.openChangesTab",
+        "key": "ctrl+alt+shift+c",
+        "mac": "ctrl+alt+shift+c"
+      },
+      {
+        "command": "governedWorkflow.openScratchpads",
+        "key": "ctrl+alt+shift+s",
+        "mac": "ctrl+alt+shift+s"
+      },
+      {
+        "command": "governedWorkflow.pasteImage",
+        "key": "ctrl+v",
+        "when": "isMac && terminalFocus && governedWorkflow.claudeTerminalActive",
+        "args": {
+          "fallbackInput": "\u0016"
+        }
+      },
+      {
+        "command": "governedWorkflow.pasteImage",
+        "key": "alt+v",
+        "when": "!isMac && terminalFocus && governedWorkflow.claudeTerminalActive",
+        "args": {
+          "fallbackInput": "\u001bv"
+        }
       },
       {
         "command": "governedWorkflow.annotations.toggleExpanded",
@@ -549,6 +598,10 @@
     ],
     "menus": {
       "commandPalette": [
+        {
+          "command": "governedWorkflow.pasteImage",
+          "when": "false"
+        },
         {
           "command": "governedWorkflow.selectWorkspace",
           "when": "false"
@@ -1003,7 +1056,12 @@
     },
     "configurationDefaults": {
       "terminal.integrated.commandsToSkipShell": [
-        "governedWorkflow.toggleTerminalFullScreen"
+        "governedWorkflow.toggleTerminal",
+        "governedWorkflow.showTerminal",
+        "governedWorkflow.toggleTerminalFullScreen",
+        "governedWorkflow.openChangesTab",
+        "governedWorkflow.openScratchpads",
+        "governedWorkflow.pasteImage"
       ]
     },
     "colors": [

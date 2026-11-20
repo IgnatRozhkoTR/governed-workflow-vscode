@@ -9,7 +9,7 @@ A VS Code client for [Governed Workflow](https://github.com/IgnatRozhkoTR/govern
 - Comment anywhere. Comments on plan items, scope, findings and criteria live in the panel. Code comments sit on lines in the editor and the diff editor, on files and folders from the explorer, and in the Comments view. All of them are the same threads the web panel and the agents see.
 - Review the branch diff in VS Code's native diff editor, from the **Changes** view in the sidebar or the panel's Changes tab.
 - Create projects and workspaces, run project setup, archive workspaces and remove projects.
-- Run the workspace's Claude Code session in an editor tab, full screen or the terminal panel, attach images to it, and manage the panel's other terminal sessions.
+- Run the workspace's Claude Code session full screen or in the terminal panel, paste or attach images to it, and manage the panel's other terminal sessions.
 
 ## Workspace Control panel
 
@@ -84,8 +84,7 @@ The extension prefers the workspace side (`extensionKind: workspace, ui`) and fa
 | `governedWorkflow.serverUrl` | `http://localhost:5111` | Base URL of the admin panel. |
 | `governedWorkflow.pollIntervalSeconds` | `10` | State polling interval while the window is focused and the Workspace Control panel is not visible. While the panel is visible and the window focused, the state is polled every 3 seconds (cheap ETag/304 requests). Minimum 3. |
 | `governedWorkflow.annotations.enabled` | `true` | Show annotations in editors and diffs. **Toggle Annotations** flips it. |
-| `governedWorkflow.terminal.layout` | `editor` | Where the Claude terminal opens: `panel` (the terminal panel; drag it to the bottom or the secondary side bar), `editor` (an editor tab) or `fullscreen` (an editor tab with its group maximised). Switch from the status bar item, **Claude Terminal Layout…** or **Toggle Claude Terminal Full Screen** (`Ctrl+Alt+Shift+Enter`); an open terminal moves without reconnecting. |
-| `governedWorkflow.terminal.maximize` | `true` | Deprecated. While `terminal.layout` is unset, an explicit `true` selects `fullscreen`. |
+| `governedWorkflow.terminal.layout` | `fullscreen` | Where the Claude terminal opens: `fullscreen` (an editor tab, its group maximised and both side bars hidden; leaving restores the groups and reopens the primary side bar) or `panel` (the terminal panel, docked wherever the panel is). The retired `editor` value means `fullscreen`. Switch from the status bar item, **Claude Terminal Layout…** or **Toggle Claude Terminal Full Screen**; an open terminal moves without reconnecting. |
 | `governedWorkflow.onSelectWorkspace` | `newWindow` | What picking a workspace does when this window is not on its worktree: `newWindow`, `sameWindow`, `addFolder` or `off`. |
 | `governedWorkflow.sshHost` | empty | SSH target for worktrees on the admin panel's machine, e.g. `ig@mac` or an `~/.ssh/config` alias. Empty: the panel's reported user at the `serverUrl` host. |
 
@@ -115,7 +114,18 @@ The panel stores only a SHA-256 hash of the admin token, so an existing token ca
 
 ## Commands
 
-All commands are in the `Governed Workflow` category. The main ones are open Workspace Control, switch workspace, approve or reject the plan or the gate, set phase, toggle YOLO mode, notify Claude, resume or start Claude, attach an image, terminal sessions, run project setup, and set token. Commands that act on a tree item or a file (remove project, archive workspace, add workflow comment, add annotation, the comment actions) are in the context menus.
+All commands are in the `Governed Workflow` category. Default shortcuts, the same on macOS (rebind them in Keyboard Shortcuts; they work while a terminal has focus):
+
+| Shortcut | Command |
+| --- | --- |
+| `` Ctrl+Alt+` `` | **Toggle Claude Terminal**: hides it when it has focus, otherwise shows it in the current layout, attaching if needed. |
+| `Ctrl+Alt+T` | **Show Claude Terminal**: shows and focuses it, never hides. |
+| `Ctrl+Alt+Shift+Enter` | **Toggle Claude Terminal Full Screen**: switches between full screen and the panel, keeping the session attached. |
+| `Ctrl+Alt+Shift+C` | **Open Changes Tab** in Workspace Control. |
+| `Ctrl+Alt+Shift+S` | **Open Scratchpads** in Workspace Control. |
+| `Ctrl+V` (macOS), `Alt+V` (Windows, Linux) | **Paste Clipboard Image into Claude**, in the Claude terminal only: an image on this machine's clipboard is uploaded to the admin panel and pasted into the session; without one the key goes through to Claude Code. The clipboard is read by a short-lived focused tab, since only a focused webview may read it. |
+
+The main ones are open Workspace Control, switch workspace, approve or reject the plan or the gate, set phase, toggle YOLO mode, notify Claude, resume or start Claude, attach an image, terminal sessions, run project setup, and set token. Commands that act on a tree item or a file (remove project, archive workspace, add workflow comment, add annotation, the comment actions) are in the context menus.
 
 ## Build
 

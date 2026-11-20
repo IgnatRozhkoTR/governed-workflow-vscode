@@ -14,6 +14,9 @@ const KILL_CONFIRM_ACTION = 'Kill session';
 const SWITCH_WORKSPACE_ACTION = 'Switch Workspace…';
 const SWITCH_WORKSPACE_COMMAND = 'governedWorkflow.switchWorkspace';
 const DEFAULT_TERMINAL_LABEL = 'Claude';
+const SHOW_TERMINAL_COMMAND = 'governedWorkflow.showTerminal';
+const TOGGLE_TERMINAL_COMMAND = 'governedWorkflow.toggleTerminal';
+export const CLAUDE_TERMINAL_ACTIVE_CONTEXT_KEY = 'governedWorkflow.claudeTerminalActive';
 
 export interface ActiveWorkspaceSource {
   readonly workspace: WorkspaceRef | undefined;
@@ -31,6 +34,15 @@ export interface StartClaudeOptions {
 }
 
 type StartClaudeArgument = RefArgument | StartClaudeOptions;
+
+// Extensions cannot read terminal focus, so the keybinding whose when clause matches focus in the Claude terminal says so.
+interface ToggleTerminalOptions {
+  readonly isFocused: true;
+}
+
+function isToggleTerminalOptions(arg: unknown): arg is ToggleTerminalOptions {
+  return typeof arg === 'object' && arg !== null && (arg as { isFocused?: unknown }).isFocused === true;
+}
 
 type Dimensions = Readonly<{ columns: number; rows: number }>;
 
@@ -136,30 +148,46 @@ export class ClaudeTerminal implements vscode.Pseudoterminal {
   }
 }
 
+export interface ClaudeSession {
+  readonly ref: WorkspaceRef;
+  readonly terminal: vscode.Terminal;
+}
+
 export interface ClaudeTerminalHandle {
   sendText(ref: WorkspaceRef, text: string): boolean;
   terminalFor(ref: WorkspaceRef): vscode.Terminal | undefined;
+  activeSession(): ClaudeSession | undefined;
 }
 
 class ClaudeTerminalManager implements ClaudeTerminalHandle {
-  private readonly terminals = new Map<string, vscode.Terminal>();
+  private readonly sessions = new Map<string, ClaudeSession>();
 
   constructor(private readonly deps: ClaudeTerminalDeps) {}
 
   forget(terminal: vscode.Terminal): void {
-    for (const [key, open] of this.terminals) {
-      if (open === terminal) {
-        this.terminals.delete(key);
+    for (const [key, session] of this.sessions) {
+      if (session.terminal === terminal) {
+        this.sessions.delete(key);
       }
     }
+    this.publishActiveContext();
   }
 
   terminalFor(ref: WorkspaceRef): vscode.Terminal | undefined {
-    return this.terminals.get(workspaceKey(ref));
+    return this.sessions.get(workspaceKey(ref))?.terminal;
+  }
+
+  activeSession(): ClaudeSession | undefined {
+    const active = vscode.window.activeTerminal;
+    return active === undefined ? undefined : [...this.sessions.values()].find((session) => session.terminal === active);
+  }
+
+  publishActiveContext(): void {
+    void vscode.commands.executeCommand('setContext', CLAUDE_TERMINAL_ACTIVE_CONTEXT_KEY, this.activeSession() !== undefined);
   }
 
   async show(ref: WorkspaceRef): Promise<void> {
-    const existing = this.terminals.get(workspaceKey(ref));
+    const existing = this.terminalFor(ref);
     if (existing === undefined) {
       await this.runSessionCall(() => this.deps.client.terminalResume(ref), ref);
       return;
@@ -171,13 +199,12 @@ class ClaudeTerminalManager implements ClaudeTerminalHandle {
     if (!skipConfirm && !(await this.confirmStartFresh(ref))) {
       return;
     }
-    this.terminals.get(workspaceKey(ref))?.dispose();
-    this.terminals.delete(workspaceKey(ref));
+    this.disposeTerminal(ref);
     await this.runSessionCall(() => this.deps.client.terminalStart(ref), ref);
   }
 
   sendText(ref: WorkspaceRef, text: string): boolean {
-    const terminal = this.terminals.get(workspaceKey(ref));
+    const terminal = this.terminalFor(ref);
     if (terminal === undefined) {
       return false;
     }
@@ -200,8 +227,12 @@ class ClaudeTerminalManager implements ClaudeTerminalHandle {
       this.reportFailure(error);
       return;
     }
-    this.terminals.get(workspaceKey(ref))?.dispose();
-    this.terminals.delete(workspaceKey(ref));
+    this.disposeTerminal(ref);
+  }
+
+  private disposeTerminal(ref: WorkspaceRef): void {
+    this.terminalFor(ref)?.dispose();
+    this.sessions.delete(workspaceKey(ref));
   }
 
   private async confirmStartFresh(ref: WorkspaceRef): Promise<boolean> {
@@ -230,7 +261,7 @@ class ClaudeTerminalManager implements ClaudeTerminalHandle {
       pty: new ClaudeTerminal(url),
       location: this.deps.placement.creationLocation(layout),
     });
-    this.terminals.set(workspaceKey(ref), terminal);
+    this.sessions.set(workspaceKey(ref), { ref, terminal });
     await this.deps.placement.present(terminal, layout);
   }
 
@@ -250,6 +281,15 @@ async function offerWorkspacePicker(): Promise<void> {
   }
 }
 
+async function showActiveWorkspaceTerminal(manager: ClaudeTerminalManager, activeWorkspace: ActiveWorkspaceSource): Promise<void> {
+  const target = activeWorkspace.workspace;
+  if (target === undefined) {
+    await offerWorkspacePicker();
+    return;
+  }
+  await manager.show(target);
+}
+
 export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: ClaudeTerminalDeps): ClaudeTerminalHandle {
   const manager = new ClaudeTerminalManager(deps);
   const resolve = (arg: RefArgument): WorkspaceRef | undefined => {
@@ -261,19 +301,21 @@ export function registerClaudeTerminal(context: vscode.ExtensionContext, deps: C
   };
   context.subscriptions.push(
     vscode.window.onDidCloseTerminal((terminal) => manager.forget(terminal)),
+    vscode.window.onDidChangeActiveTerminal(() => manager.publishActiveContext()),
     vscode.commands.registerCommand('governedWorkflow.resumeClaude', async (arg?: RefArgument) => {
       const target = resolve(arg);
       if (target !== undefined) {
         await manager.show(target);
       }
     }),
-    vscode.commands.registerCommand('governedWorkflow.showTerminal', async () => {
-      const target = deps.activeWorkspace.workspace;
-      if (target === undefined) {
-        await offerWorkspacePicker();
+    vscode.commands.registerCommand(SHOW_TERMINAL_COMMAND, () => showActiveWorkspaceTerminal(manager, deps.activeWorkspace)),
+    vscode.commands.registerCommand(TOGGLE_TERMINAL_COMMAND, async (options?: unknown) => {
+      const focused = isToggleTerminalOptions(options) ? manager.activeSession() : undefined;
+      if (focused === undefined) {
+        await showActiveWorkspaceTerminal(manager, deps.activeWorkspace);
         return;
       }
-      await manager.show(target);
+      await deps.placement.hide(focused.terminal);
     }),
     vscode.commands.registerCommand('governedWorkflow.startClaude', async (arg?: StartClaudeArgument) => {
       const options = isStartClaudeOptions(arg) ? arg : { ref: unwrapRef(arg) };

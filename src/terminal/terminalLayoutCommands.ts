@@ -12,7 +12,6 @@ import {
 export const TERMINAL_LAYOUT_COMMANDS = {
   pick: 'governedWorkflow.terminalLayout',
   panel: 'governedWorkflow.terminalLayoutPanel',
-  editor: 'governedWorkflow.terminalLayoutEditor',
   fullscreen: 'governedWorkflow.terminalLayoutFullScreen',
   toggleFullScreen: 'governedWorkflow.toggleTerminalFullScreen',
 } as const;
@@ -20,18 +19,15 @@ export const TERMINAL_LAYOUT_COMMANDS = {
 const TERMINAL_SETTINGS_SECTION = 'governedWorkflow.terminal';
 const STATUS_ITEM_ID = 'governedWorkflow.terminalLayout';
 const STATUS_ITEM_PRIORITY = -100;
-const DEFAULT_WINDOWED_LAYOUT: TerminalLayout = 'editor';
 
 const LAYOUT_LABELS: Readonly<Record<TerminalLayout, string>> = {
-  panel: 'Panel',
-  editor: 'Editor',
   fullscreen: 'Full screen',
+  panel: 'Panel',
 };
 
 const LAYOUT_DESCRIPTIONS: Readonly<Record<TerminalLayout, string>> = {
-  panel: 'bottom or right sidebar, drag to choose',
-  editor: 'a tab in the editor area',
-  fullscreen: 'editor tab with its group maximised',
+  fullscreen: 'editor tab, maximised with the side bars hidden',
+  panel: 'the panel, wherever it is docked',
 };
 
 export interface ClaudeTerminalLookup {
@@ -49,27 +45,21 @@ interface LayoutPickItem extends vscode.QuickPickItem {
 }
 
 export class TerminalLayoutSwitcher {
-  private windowedLayout: TerminalLayout;
-
-  constructor(private readonly deps: TerminalLayoutDeps) {
-    const current = readTerminalLayout();
-    this.windowedLayout = current === 'fullscreen' ? DEFAULT_WINDOWED_LAYOUT : current;
-  }
+  constructor(private readonly deps: TerminalLayoutDeps) {}
 
   async switchTo(layout: TerminalLayout): Promise<void> {
-    this.rememberWindowedLayout();
     await writeTerminalLayout(layout);
     const ref = this.deps.activeWorkspace.workspace;
     const terminal = ref === undefined ? undefined : this.deps.terminals.terminalFor(ref);
     if (terminal !== undefined) {
       await this.deps.placement.moveTo(terminal, layout);
-    } else if (layout !== 'fullscreen') {
-      await this.deps.placement.restoreGroups();
+    } else if (layout === 'panel') {
+      await this.deps.placement.leaveFullScreen();
     }
   }
 
   async toggleFullScreen(): Promise<void> {
-    await this.switchTo(readTerminalLayout() === 'fullscreen' ? this.windowedLayout : 'fullscreen');
+    await this.switchTo(readTerminalLayout() === 'fullscreen' ? 'panel' : 'fullscreen');
   }
 
   async pick(): Promise<void> {
@@ -82,13 +72,6 @@ export class TerminalLayoutSwitcher {
     const picked = await vscode.window.showQuickPick(items, { placeHolder: 'Claude terminal layout' });
     if (picked !== undefined) {
       await this.switchTo(picked.layout);
-    }
-  }
-
-  private rememberWindowedLayout(): void {
-    const current = readTerminalLayout();
-    if (current !== 'fullscreen') {
-      this.windowedLayout = current;
     }
   }
 }
@@ -130,7 +113,6 @@ export function registerTerminalLayout(context: vscode.ExtensionContext, deps: T
     }),
     vscode.commands.registerCommand(TERMINAL_LAYOUT_COMMANDS.pick, () => switcher.pick()),
     vscode.commands.registerCommand(TERMINAL_LAYOUT_COMMANDS.panel, () => switcher.switchTo('panel')),
-    vscode.commands.registerCommand(TERMINAL_LAYOUT_COMMANDS.editor, () => switcher.switchTo('editor')),
     vscode.commands.registerCommand(TERMINAL_LAYOUT_COMMANDS.fullscreen, () => switcher.switchTo('fullscreen')),
     vscode.commands.registerCommand(TERMINAL_LAYOUT_COMMANDS.toggleFullScreen, () => switcher.toggleFullScreen()),
   );

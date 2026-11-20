@@ -31,6 +31,8 @@ export function registerPanelCommands(context: vscode.ExtensionContext, deps: Pa
   const handlers: Record<string, (arg?: unknown) => Promise<void> | void> = {
     'governedWorkflow.openControlPanel': (arg) => panel.createOrShow(isNavTarget(arg) ? arg : undefined),
     'governedWorkflow.openPlan': () => panel.createOrShow({ tab: 'planning' }),
+    'governedWorkflow.openChangesTab': () => panel.createOrShow({ tab: 'changes' }),
+    'governedWorkflow.openScratchpads': () => panel.createOrShow({ tab: 'scratchpads' }),
     'governedWorkflow.approvePlan': () => approvePlan(deps),
     'governedWorkflow.rejectPlan': () => panel.createOrShow({ tab: 'planning', action: 'rejectPlan' }),
     'governedWorkflow.setPhase': () => panel.createOrShow({ tab: 'phase', action: 'setPhase' }),
