@@ -387,6 +387,17 @@ describe('CodeThreadSet base side', () => {
     expect(workspace.openTextDocument).toHaveBeenCalledWith(created[1].uri);
   });
 
+  it('reveal_shouldAnchorThreadOnTheRepoBaseBranch_whenTheRepoConfiguresItsOwnBase', async () => {
+    const state = makeState({ source_branch: 'develop', project_type: 'multi', repo_base_branches: { 'qa-api': 'main' } });
+    stat.mockRejectedValue({ code: 'FileNotFound' });
+    workspace.openTextDocument.mockResolvedValue(document('/unused', ['line']));
+    set.sync({ workspace: REF, state }, [codeThread(1, { file_path: 'qa-api/old.py', target: 'qa-api/old.py' })]);
+
+    await set.reveal(1);
+
+    expect(created[1].uri).toMatchObject({ scheme: 'gw-base', query: 'ref=main&repo=qa-api' });
+  });
+
   it('sync_shouldAnchorFileAndLineThreadsOnBranchBase_whenFileIsDeleted', async () => {
     stat.mockRejectedValue({ code: 'FileNotFound' });
 

@@ -7,6 +7,7 @@ import { Badge, EmptyState, ResourceView, Select, Tabs, TextField, Toolbar, useT
 import { useT } from '../../i18n/i18n';
 import { rpc } from '../../rpc/rpcClient';
 import { joinRepoPath } from '@shared/paths';
+import { defaultBaseFor } from '@shared/repoBase';
 import { usePersistentState, useResource, useWorkspaceState } from '../../store/hooks';
 import { blockingRoots } from '../review/reviewBlocking';
 import type { TabProps } from '../types';
@@ -64,7 +65,8 @@ export function ChangesTab({ active }: TabProps): JSX.Element {
   const hasNoRepos = isRepoReady && repoList.length === 0;
   const branches = useResource('history', `branches|${repo}`, () => listBranches(repo), { active: active && isRepoReady && !isAllRepos, refetchOnState: false });
   const branchList = branches.data?.branches ?? [];
-  const bases = selectableBases(branchList, state.source_branch);
+  const repoDefaultBase = defaultBaseFor(state, nativeRepo(repo));
+  const bases = selectableBases(branchList, repoDefaultBase);
   const resolvedBase = bases.includes(base) ? base : '';
   const isAllCommits = isAllRepos && source === 'commit';
   const diffSource: SourceMode = isAllCommits ? 'branch' : source;
@@ -102,7 +104,7 @@ export function ChangesTab({ active }: TabProps): JSX.Element {
   const filesLabel = changesCountLabel(t, isAllRepos
     ? allReposCounts(diffSource, allRepoFiles, uncommittedPaths)
     : { mode: diffSource, shown: visibleFiles.length, total: diff.data?.files.length ?? 0, uncommittedInBranch: uncommittedInBranch(diff.data?.files ?? [], uncommittedPaths, nativeRepo(repo)) });
-  const defaultBase = defaultBaseName(resolvedBase, diff.data?.base, state.source_branch);
+  const defaultBase = defaultBaseName(resolvedBase, diff.data?.base, repoDefaultBase);
   const hasBlockingThreads = blockersInRepo(blockers, selectedRepo).length > 0;
 
   const nativeSource = (repoPath: string, loadedBase: string | undefined): DiffSource => ({

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { WorkspaceSnapshot } from '../diff/diffView';
+import { defaultBaseFor } from '../shared/repoBase';
 import { baseFileUriParts } from '../fs/uris';
 import { splitRepoPath, type RepoPath } from '../shared/paths';
 import { hashLines, placeLines, type CodeThread } from './commentMapping';
@@ -37,11 +38,11 @@ export async function isAnchoredInWorkingTree(uri: vscode.Uri, code: CodeThread)
 
 // A file deleted on the branch only exists at the branch base, so its threads live on the base document.
 export function branchBaseUri(snapshot: WorkspaceSnapshot, filePath: string): vscode.Uri | undefined {
-  const baseRef = snapshot.state.source_branch;
+  const location: RepoPath = snapshot.state.project_type === MULTI_REPO_PROJECT ? splitRepoPath(filePath) : { relPath: filePath };
+  const baseRef = defaultBaseFor(snapshot.state, location.repo);
   if (!baseRef) {
     return undefined;
   }
-  const location: RepoPath = snapshot.state.project_type === MULTI_REPO_PROJECT ? splitRepoPath(filePath) : { relPath: filePath };
   return vscode.Uri.from(baseFileUriParts({ workspace: snapshot.workspace, relPath: location.relPath, baseRef, repo: location.repo }));
 }
 

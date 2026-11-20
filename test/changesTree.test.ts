@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../src/api/client';
-import type { DiffFile, DiffQuery, WorkspaceRef, WorkspaceState } from '../src/api/types';
+import type { DiffFile, DiffQuery, DiffRepo, WorkspaceRef, WorkspaceState } from '../src/api/types';
 import { ChangeDecorationProvider, changeResourceUri } from '../src/diff/changeDecorations';
-import type { ChangeFileNode } from '../src/diff/changesModel';
+import type { ChangeFileNode, ChangeRepoNode } from '../src/diff/changesModel';
 import {
   ChangesTreeProvider,
   changeTreeItem,
@@ -13,7 +13,7 @@ import {
 } from '../src/diff/changesTree';
 import { ChangesViewMemory } from '../src/diff/changesViewMemory';
 import type { WorkspaceLocator } from '../src/fs/workspaceLocator';
-import { commands, EventEmitter, Uri, ViewColumn } from './vscodeStub';
+import { commands, EventEmitter, Uri, ViewColumn, window } from './vscodeStub';
 
 const WORKSPACE: WorkspaceRef = { projectId: 'shop', branch: 'feature/a' };
 const STATE = { branch: 'feature/a', source_branch: 'main', working_dir: '/wt' } as WorkspaceState;
@@ -45,12 +45,16 @@ class FakeActiveWorkspace implements ChangesWorkspaceSource {
 
 const locator = { fileUri: (_workspace: WorkspaceRef, _state: WorkspaceState, relPath: string) => Uri.file(`/wt/${relPath}`), isLocal: () => true };
 
-function setup(repos: { path: string; name: string }[] = [{ path: '.', name: 'shop' }], filesByRepo: Record<string, DiffFile[]> = { '.': [file('src/a.ts')] }) {
+function setup(
+  repos: DiffRepo[] = [{ path: '.', name: 'shop' }],
+  filesByRepo: Record<string, DiffFile[]> = { '.': [file('src/a.ts')] },
+  memento = new FakeMemento(),
+) {
+  const baseOf = (query: DiffQuery) => query.base ?? repos.find((entry) => entry.path === query.repo)?.base_branch ?? 'main';
   const client = {
     listRepos: vi.fn(async () => repos),
-    getDiff: vi.fn(async (_workspace: WorkspaceRef, query: DiffQuery) => ({ mode: query.mode, base: 'main', files: filesByRepo[query.repo ?? '.'] ?? [] })),
+    getDiff: vi.fn(async (_workspace: WorkspaceRef, query: DiffQuery) => ({ mode: query.mode, base: baseOf(query), files: filesByRepo[query.repo ?? '.'] ?? [] })),
   };
-  const memento = new FakeMemento();
   const active = new FakeActiveWorkspace();
   const provider = new ChangesTreeProvider(client as unknown as ApiClient, active, new ChangesViewMemory(memento as never));
   const deps = { locator: locator as unknown as WorkspaceLocator, active, provider };
@@ -158,6 +162,101 @@ describe('ChangesTreeProvider', () => {
     await provider.reload();
 
     expect(provider.getChildren()).toEqual([{ type: 'message', id: 'message', text: 'Cannot load changes: server exploded' }]);
+  });
+});
+
+const TWO_REPOS: DiffRepo[] = [
+  { path: 'api', name: 'API', base_branch: 'develop' },
+  { path: 'web', name: 'Web', base_branch: 'main' },
+];
+const TWO_REPO_FILES = { api: [file('a.ts')], web: [file('b.ts')] };
+
+function repoNodes(provider: ChangesTreeProvider): ChangeRepoNode[] {
+  return provider.getChildren().filter((node): node is ChangeRepoNode => node.type === 'repo');
+}
+
+describe('per-repo base', () => {
+  it('reload_shouldDescribeEachRepoAgainstItsOwnDefaultBase_whenNoBaseIsChanged', async () => {
+    const { client, provider } = setup(TWO_REPOS, TWO_REPO_FILES);
+
+    await provider.reload();
+
+    expect(client.getDiff).toHaveBeenCalledWith(WORKSPACE, { mode: 'branch', repo: 'web', base: undefined });
+    expect(repoNodes(provider).map((node) => changeTreeItem(node).description)).toEqual(['vs develop', 'vs main']);
+    expect(repoNodes(provider).map((node) => changeTreeItem(node).contextValue)).toEqual(['gwChangeRepo', 'gwChangeRepo']);
+    expect(provider.summary).toBe('vs develop, main');
+  });
+
+  it('setBaseOverride_shouldPersistPerWorkspaceAndRepoAndMarkTheNode_whenAnotherBaseIsChosen', async () => {
+    const memento = new FakeMemento();
+    const { client, provider } = setup(TWO_REPOS, TWO_REPO_FILES, memento);
+    await provider.reload();
+
+    await provider.setBaseOverride(repoNodes(provider)[1].repo, 'release/1.0');
+
+    expect(client.getDiff).toHaveBeenLastCalledWith(WORKSPACE, { mode: 'branch', repo: 'web', base: 'release/1.0' });
+    const item = changeTreeItem(repoNodes(provider)[1]);
+    expect(item.description).toBe('vs release/1.0 (changed)');
+    expect(item.contextValue).toBe('gwChangeRepoOverridden');
+    expect(item.tooltip).toBe('web • base changed to release/1.0; default base is main');
+    const reopened = setup(TWO_REPOS, TWO_REPO_FILES, memento);
+    await reopened.provider.reload();
+    expect(repoNodes(reopened.provider).map((node) => node.repo.source.base)).toEqual(['develop', 'release/1.0']);
+  });
+
+  it('setBaseOverride_shouldNotApplyTheOverride_whenAnotherWorkspaceIsActive', async () => {
+    const memento = new FakeMemento();
+    const first = setup(TWO_REPOS, TWO_REPO_FILES, memento);
+    await first.provider.reload();
+    await first.provider.setBaseOverride(repoNodes(first.provider)[0].repo, 'main');
+
+    const other = setup(TWO_REPOS, TWO_REPO_FILES, memento);
+    other.active.ref = { projectId: 'shop', branch: 'feature/b' };
+    await other.provider.reload();
+
+    expect(repoNodes(other.provider).map((node) => node.repo.baseOverride)).toEqual([undefined, undefined]);
+  });
+
+  it('setBaseOverride_shouldClearTheOverride_whenTheDefaultBaseIsChosen', async () => {
+    const memento = new FakeMemento();
+    const { provider } = setup(TWO_REPOS, TWO_REPO_FILES, memento);
+    await provider.reload();
+    await provider.setBaseOverride(repoNodes(provider)[0].repo, 'main');
+
+    await provider.setBaseOverride(repoNodes(provider)[0].repo, undefined);
+
+    expect(memento.values.get('governedWorkflow.changes.baseOverrides')).toEqual({});
+    expect(changeTreeItem(repoNodes(provider)[0]).description).toBe('vs develop');
+  });
+
+  it('reload_shouldDropTheOverrideAndWarn_whenTheChosenBaseNoLongerExists', async () => {
+    const memento = new FakeMemento();
+    const { client, provider } = setup(TWO_REPOS, TWO_REPO_FILES, memento);
+    await provider.reload();
+    const { ApiError } = await import('../src/api/errors');
+    client.getDiff.mockRejectedValueOnce(new ApiError(400, 'base_ref_not_found', 'base_ref_not_found'));
+
+    await provider.setBaseOverride(repoNodes(provider)[0].repo, 'gone');
+
+    expect(window.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining('Base "gone" was not found in API'));
+    expect(memento.values.get('governedWorkflow.changes.baseOverrides')).toEqual({});
+    expect(changeTreeItem(repoNodes(provider)[0]).description).toBe('vs develop');
+  });
+
+  it('setRepoFilter_shouldShowOnlyTheChosenRepoAndRemainForTheWorkspace', async () => {
+    const memento = new FakeMemento();
+    const { provider } = setup(TWO_REPOS, TWO_REPO_FILES, memento);
+    await provider.reload();
+
+    await provider.setRepoFilter('web');
+
+    expect(provider.getChildren().map((node) => node.id)).toEqual(['file:web:b.ts']);
+    expect(provider.summary).toBe('Web vs main');
+    expect(provider.fileCount).toBe(1);
+    expect(provider.changeGroups.map((group) => group.source.repo)).toEqual(['web']);
+    const reopened = setup(TWO_REPOS, TWO_REPO_FILES, memento);
+    await reopened.provider.reload();
+    expect(reopened.provider.repoFilter).toBe('web');
   });
 });
 
