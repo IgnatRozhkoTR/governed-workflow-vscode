@@ -61,11 +61,12 @@ export function ConvertPanel({ mode, registry, onClose }: ConvertPanelProps): JS
         <div class="gw-git-convert-row" key={row.relPath}>
           <label class="gw-git-convert-check">
             <input type="checkbox" checked={row.checked} onChange={(event) => patchRow(index, { checked: event.currentTarget.checked })} />
-            <span>{row.name}</span>
-            {row.relPath !== row.name && <span class="gw-git-repo-path">{row.relPath}</span>}
+            <span class="gw-git-convert-name" title={row.relPath}>{row.name}</span>
+            {row.relPath !== row.name && <span class="gw-git-repo-path gw-git-convert-path" title={row.relPath}>{row.relPath}</span>}
           </label>
           <input
             class="gw-input gw-git-convert-base"
+            aria-label={`${row.name}: ${t('gitCockpit.repos.baseBranchPlaceholder')}`}
             type="text"
             value={row.baseBranch}
             placeholder={t('gitCockpit.repos.baseBranchPlaceholder')}
