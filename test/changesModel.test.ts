@@ -7,7 +7,15 @@ function file(path: string, overrides: Partial<DiffFile> = {}): DiffFile {
 }
 
 function repo(files: DiffFile[], repoPath?: string): RepoChanges {
-  return { repo: repoPath, name: repoPath ?? 'root', source: { mode: 'branch', base: 'main', repo: repoPath }, files };
+  return {
+    repo: repoPath,
+    path: repoPath ?? '.',
+    name: repoPath ?? 'root',
+    defaultBase: 'main',
+    baseOverride: undefined,
+    source: { mode: 'branch', base: 'main', repo: repoPath },
+    files,
+  };
 }
 
 function labelsOf(nodes: readonly ChangeNode[]): string[] {

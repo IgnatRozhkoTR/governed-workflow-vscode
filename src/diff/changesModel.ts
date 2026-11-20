@@ -11,7 +11,10 @@ const PATH_SEPARATOR = '/';
 
 export interface RepoChanges {
   readonly repo: string | undefined;
+  readonly path: string;
   readonly name: string;
+  readonly defaultBase: string | undefined;
+  readonly baseOverride: string | undefined;
   readonly source: DiffSource;
   readonly files: readonly DiffFile[];
 }

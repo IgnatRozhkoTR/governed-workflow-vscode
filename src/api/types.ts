@@ -265,6 +265,7 @@ export interface WorkspaceState {
   working_dir: string;
   branch: string;
   source_branch: string | null;
+  repo_base_branches?: Readonly<Record<string, string>>;
   project_type: ProjectType;
   claude_command: string;
   skip_permissions: boolean;
@@ -331,6 +332,13 @@ export interface DiffFile {
 export interface DiffRepo {
   path: string;
   name: string;
+  base_branch?: string;
+}
+
+export interface RepoBranch {
+  name: string;
+  ref: string;
+  current: boolean;
 }
 
 export interface DiffResponse {

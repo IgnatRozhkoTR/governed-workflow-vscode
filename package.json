@@ -229,6 +229,24 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "governedWorkflow.changes.changeBase",
+        "title": "Change Base…",
+        "category": "Governed Workflow",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "governedWorkflow.changes.resetBase",
+        "title": "Reset to Default Base",
+        "category": "Governed Workflow",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "governedWorkflow.changes.filterRepo",
+        "title": "Show Repository…",
+        "category": "Governed Workflow",
+        "icon": "$(filter)"
+      },
+      {
         "command": "governedWorkflow.comment.create",
         "title": "Add Review Comment",
         "category": "Governed Workflow"
@@ -721,6 +739,18 @@
         {
           "command": "governedWorkflow.annotations.close",
           "when": "false"
+        },
+        {
+          "command": "governedWorkflow.changes.changeBase",
+          "when": "governedWorkflow.changes.loaded && governedWorkflow.changes.mode != uncommitted"
+        },
+        {
+          "command": "governedWorkflow.changes.resetBase",
+          "when": "false"
+        },
+        {
+          "command": "governedWorkflow.changes.filterRepo",
+          "when": "governedWorkflow.changes.multiRepo"
         }
       ],
       "view/title": [
@@ -850,6 +880,16 @@
           "group": "navigation@4"
         },
         {
+          "command": "governedWorkflow.changes.filterRepo",
+          "when": "view == governedWorkflow.changes && governedWorkflow.changes.multiRepo",
+          "group": "navigation@5"
+        },
+        {
+          "command": "governedWorkflow.changes.changeBase",
+          "when": "view == governedWorkflow.changes && governedWorkflow.changes.loaded && governedWorkflow.changes.mode != uncommitted",
+          "group": "1_base@1"
+        },
+        {
           "command": "governedWorkflow.comments.filter",
           "when": "view == governedWorkflow.comments",
           "group": "navigation"
@@ -960,6 +1000,26 @@
           "command": "governedWorkflow.changes.copyPath",
           "when": "view == governedWorkflow.changes && viewItem =~ /^gwChangeFile/",
           "group": "2_copy@1"
+        },
+        {
+          "command": "governedWorkflow.changes.changeBase",
+          "when": "view == governedWorkflow.changes && viewItem =~ /^gwChangeRepo/ && governedWorkflow.changes.mode != uncommitted",
+          "group": "inline@1"
+        },
+        {
+          "command": "governedWorkflow.changes.resetBase",
+          "when": "view == governedWorkflow.changes && viewItem == gwChangeRepoOverridden && governedWorkflow.changes.mode != uncommitted",
+          "group": "inline@2"
+        },
+        {
+          "command": "governedWorkflow.changes.changeBase",
+          "when": "view == governedWorkflow.changes && viewItem =~ /^gwChangeRepo/ && governedWorkflow.changes.mode != uncommitted",
+          "group": "1_base@1"
+        },
+        {
+          "command": "governedWorkflow.changes.resetBase",
+          "when": "view == governedWorkflow.changes && viewItem == gwChangeRepoOverridden && governedWorkflow.changes.mode != uncommitted",
+          "group": "1_base@2"
         }
       ],
       "comments/commentThread/context": [

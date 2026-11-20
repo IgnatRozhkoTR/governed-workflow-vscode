@@ -17,6 +17,7 @@ import {
   type RepoChanges,
   type WorkingTreeMode,
 } from './changesModel';
+import { registerChangesBaseCommands } from './changesBaseCommands';
 import { ChangesViewMemory } from './changesViewMemory';
 import {
   DIFF_SHOW_OPTIONS,
@@ -41,9 +42,13 @@ export const COPY_CHANGED_PATH_COMMAND = 'governedWorkflow.changes.copyPath';
 const MODE_CONTEXT_KEY = 'governedWorkflow.changes.mode';
 const LAYOUT_CONTEXT_KEY = 'governedWorkflow.changes.layout';
 const LOADED_CONTEXT_KEY = 'governedWorkflow.changes.loaded';
+const MULTI_REPO_CONTEXT_KEY = 'governedWorkflow.changes.multiRepo';
 const FILE_CONTEXT = 'gwChangeFile';
 const DELETED_FILE_CONTEXT = 'gwChangeFileDeleted';
 const FOLDER_CONTEXT = 'gwChangeFolder';
+const REPO_CONTEXT = 'gwChangeRepo';
+const OVERRIDDEN_REPO_CONTEXT = 'gwChangeRepoOverridden';
+const BASE_NOT_FOUND_CODE = 'base_ref_not_found';
 const ROOT_REPO = '.';
 
 const KIND_LABELS: Readonly<Record<ChangeKind, string>> = { added: 'Added', modified: 'Modified', deleted: 'Deleted', renamed: 'Renamed' };
@@ -111,20 +116,34 @@ export class ChangesTreeProvider implements vscode.TreeDataProvider<ChangesTreeN
   }
 
   get fileCount(): number {
-    return this.loaded.status === 'loaded' ? countChangedFiles(this.loaded.repos) : 0;
+    return countChangedFiles(this.visibleRepos);
   }
 
   get summary(): string {
+    const filtered = this.filteredRepo;
+    const scope = filtered === undefined ? '' : `${filtered.name} `;
     if (this.mode === 'uncommitted') {
-      return 'uncommitted';
+      return `${scope}uncommitted`;
     }
-    const bases = this.loaded.status === 'loaded' ? distinctBases(this.loaded.repos) : [];
-    return bases.length === 0 ? 'branch' : `vs ${bases.join(', ')}`;
+    const bases = distinctBases(this.visibleRepos);
+    return bases.length === 0 ? `${scope}branch` : `${scope}vs ${bases.join(', ')}`;
+  }
+
+  get repos(): readonly RepoChanges[] {
+    return this.loaded.status === 'loaded' ? this.loaded.repos : [];
+  }
+
+  get repoFilter(): string | undefined {
+    return this.filteredRepo?.path;
+  }
+
+  get visibleRepos(): readonly RepoChanges[] {
+    const filtered = this.filteredRepo;
+    return filtered === undefined ? this.repos : [filtered];
   }
 
   get changeGroups(): OpenAllChangesArgs[] {
-    const repos = this.loaded.status === 'loaded' ? this.loaded.repos : [];
-    return repos
+    return this.visibleRepos
       .filter((entry) => entry.files.length > 0)
       .map((entry) => ({ source: entry.source, files: entry.files.map(toDiffFileRef) }));
   }
@@ -162,6 +181,24 @@ export class ChangesTreeProvider implements vscode.TreeDataProvider<ChangesTreeN
     this.show(this.loaded);
   }
 
+  async setBaseOverride(repo: RepoChanges, base: string | undefined): Promise<void> {
+    const workspace = this.active.ref;
+    if (workspace === undefined) {
+      return;
+    }
+    await this.memory.setBaseOverride(workspace, repo.path, base === repo.defaultBase ? undefined : base);
+    await this.reload();
+  }
+
+  async setRepoFilter(repoPath: string | undefined): Promise<void> {
+    const workspace = this.active.ref;
+    if (workspace === undefined) {
+      return;
+    }
+    await this.memory.setRepoFilter(workspace, repoPath);
+    this.show(this.loaded);
+  }
+
   async reload(): Promise<void> {
     const sequence = ++this.loadSequence;
     this.isStale = false;
@@ -189,9 +226,15 @@ export class ChangesTreeProvider implements vscode.TreeDataProvider<ChangesTreeN
     }
   }
 
+  private get filteredRepo(): RepoChanges | undefined {
+    const workspace = this.active.ref;
+    const filter = workspace === undefined ? undefined : this.memory.repoFilter(workspace);
+    return filter === undefined ? undefined : this.repos.find((entry) => entry.path === filter);
+  }
+
   private show(loaded: LoadedChanges): void {
     this.loaded = loaded;
-    this.roots = rootNodesFor(loaded, this.layout);
+    this.roots = loaded.status === 'loaded' ? buildChangeNodes(this.visibleRepos, this.layout) : rootNodesFor(loaded);
     this.changeEmitter.fire();
   }
 
@@ -212,10 +255,25 @@ export class ChangesTreeProvider implements vscode.TreeDataProvider<ChangesTreeN
   }
 
   private async fetchRepo(workspace: WorkspaceRef, mode: WorkingTreeMode, entry: DiffRepo): Promise<RepoChanges> {
+    const baseOverride = mode === 'branch' ? this.memory.baseOverride(workspace, entry.path) : undefined;
+    try {
+      return await this.fetchRepoAgainst(workspace, mode, entry, baseOverride);
+    } catch (error) {
+      if (baseOverride === undefined || !(error instanceof ApiError) || error.code !== BASE_NOT_FOUND_CODE) {
+        throw error;
+      }
+      await this.memory.setBaseOverride(workspace, entry.path, undefined);
+      void vscode.window.showWarningMessage(`Base "${baseOverride}" was not found in ${entry.name}, so its changes are shown against the default base again.`);
+      return this.fetchRepoAgainst(workspace, mode, entry, undefined);
+    }
+  }
+
+  private async fetchRepoAgainst(workspace: WorkspaceRef, mode: WorkingTreeMode, entry: DiffRepo, baseOverride: string | undefined): Promise<RepoChanges> {
     const repo = entry.path === ROOT_REPO ? undefined : entry.path;
-    const response = await this.client.getDiff(workspace, { mode, repo: entry.path });
+    const response = await this.client.getDiff(workspace, { mode, repo: entry.path, base: baseOverride });
     const base = mode === 'branch' ? response.base : undefined;
-    return { repo, name: entry.name, source: { mode, base, repo }, files: response.files };
+    const defaultBase = entry.base_branch ?? (baseOverride === undefined ? base : undefined);
+    return { repo, path: entry.path, name: entry.name, defaultBase, baseOverride, source: { mode, base, repo }, files: response.files };
   }
 }
 
@@ -230,6 +288,7 @@ export function registerChangesTree(context: vscode.ExtensionContext, deps: Chan
     provider.onDidChangeTreeData(() => presentView(treeView, provider)),
     treeView.onDidChangeVisibility((event) => provider.setVisible(event.visible)),
     ...registerChangesCommands({ locator: deps.locator, active: deps.active, provider }),
+    ...registerChangesBaseCommands({ client: deps.client, active: deps.active, provider }),
   );
   presentView(treeView, provider);
   provider.setVisible(treeView.visible);
@@ -307,17 +366,11 @@ function presentView(treeView: vscode.TreeView<ChangesTreeNode>, provider: Chang
   void vscode.commands.executeCommand('setContext', MODE_CONTEXT_KEY, provider.mode);
   void vscode.commands.executeCommand('setContext', LAYOUT_CONTEXT_KEY, provider.layout);
   void vscode.commands.executeCommand('setContext', LOADED_CONTEXT_KEY, provider.isLoaded);
+  void vscode.commands.executeCommand('setContext', MULTI_REPO_CONTEXT_KEY, provider.repos.length > 1);
 }
 
-function rootNodesFor(loaded: LoadedChanges, layout: ChangesLayout): ChangesTreeNode[] {
-  switch (loaded.status) {
-    case 'idle':
-      return [];
-    case 'failed':
-      return [{ type: 'message', id: 'message', text: `Cannot load changes: ${loaded.message}` }];
-    case 'loaded':
-      return buildChangeNodes(loaded.repos, layout);
-  }
+function rootNodesFor(loaded: Exclude<LoadedChanges, { status: 'loaded' }>): ChangesTreeNode[] {
+  return loaded.status === 'failed' ? [{ type: 'message', id: 'message', text: `Cannot load changes: ${loaded.message}` }] : [];
 }
 
 function distinctBases(repos: readonly RepoChanges[]): string[] {
@@ -362,9 +415,26 @@ function repoItem(node: ChangeRepoNode): vscode.TreeItem {
   const item = new vscode.TreeItem(node.repo.name, vscode.TreeItemCollapsibleState.Expanded);
   item.id = node.id;
   item.iconPath = new vscode.ThemeIcon('repo');
-  item.description = node.repo.source.base ? `vs ${node.repo.source.base}` : undefined;
-  item.tooltip = node.repo.repo ?? ROOT_REPO;
+  item.description = repoBaseDescription(node.repo);
+  item.tooltip = repoTooltip(node.repo);
+  item.contextValue = node.repo.baseOverride === undefined ? REPO_CONTEXT : OVERRIDDEN_REPO_CONTEXT;
   return item;
+}
+
+function repoBaseDescription(repo: RepoChanges): string | undefined {
+  const { base } = repo.source;
+  if (!base) {
+    return undefined;
+  }
+  return repo.baseOverride === undefined ? `vs ${base}` : `vs ${base} (changed)`;
+}
+
+function repoTooltip(repo: RepoChanges): string {
+  if (repo.baseOverride === undefined) {
+    return repo.path;
+  }
+  const defaultBase = repo.defaultBase === undefined ? '' : `; default base is ${repo.defaultBase}`;
+  return `${repo.path} • base changed to ${repo.baseOverride}${defaultBase}`;
 }
 
 function messageItem(node: MessageNode): vscode.TreeItem {

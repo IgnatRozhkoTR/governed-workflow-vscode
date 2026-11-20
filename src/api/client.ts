@@ -26,6 +26,7 @@ import type {
   Project,
   ProjectRepo,
   ProjectSettings,
+  RepoBranch,
   ReviewComment,
   ServerInfo,
   SetPhaseResult,
@@ -152,6 +153,12 @@ export class ApiClient {
   async listRepos(workspace: WorkspaceRef): Promise<DiffRepo[]> {
     const body = await this.requestJson<{ repos: DiffRepo[] }>({ method: 'GET', path: wsPath(workspace, 'repos') });
     return body.repos;
+  }
+
+  async listRepoBranches(workspace: WorkspaceRef, repo: string): Promise<RepoBranch[]> {
+    const spec: RequestSpec = { method: 'GET', path: wsPath(workspace, 'branches'), query: { repo } };
+    const body = await this.requestJson<{ branches: RepoBranch[] }>(spec);
+    return body.branches;
   }
 
   getDiff(workspace: WorkspaceRef, query: DiffQuery): Promise<DiffResponse> {

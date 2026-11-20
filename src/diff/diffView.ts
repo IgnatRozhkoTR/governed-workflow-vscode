@@ -3,6 +3,7 @@ import { ApiError } from '../api/errors';
 import type { DiffFile, WorkspaceRef, WorkspaceState } from '../api/types';
 import { baseFileUriParts } from '../fs/uris';
 import { rememberModifiedSide } from './diffSides';
+import { defaultBaseFor } from '../shared/repoBase';
 import { joinRepoPath } from '../shared/paths';
 import type { ChangeKind, DiffFileRef, DiffSource, OpenAllChangesArgs, OpenDiffArgs } from '../shared/protocol';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
@@ -114,7 +115,7 @@ function diffRefsFor(source: DiffSource, state: WorkspaceState): DiffRefs {
     case 'uncommitted':
       return { leftRef: UNCOMMITTED_BASE_REF, repo: source.repo };
     case 'branch':
-      return { leftRef: requireBaseRef(source.base ?? state.source_branch), repo: source.repo };
+      return { leftRef: requireBaseRef(source.base ?? defaultBaseFor(state, source.repo)), repo: source.repo };
   }
 }
 
