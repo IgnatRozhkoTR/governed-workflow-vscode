@@ -560,22 +560,17 @@
       },
       {
         "command": "governedWorkflow.toggleTerminal",
-        "key": "ctrl+alt+`",
-        "mac": "ctrl+alt+`"
+        "key": "ctrl+alt+t",
+        "mac": "ctrl+alt+t"
       },
       {
         "command": "governedWorkflow.toggleTerminal",
-        "key": "ctrl+alt+`",
-        "mac": "ctrl+alt+`",
+        "key": "ctrl+alt+t",
+        "mac": "ctrl+alt+t",
         "when": "terminalFocus && governedWorkflow.claudeTerminalActive",
         "args": {
           "isFocused": true
         }
-      },
-      {
-        "command": "governedWorkflow.showTerminal",
-        "key": "ctrl+alt+t",
-        "mac": "ctrl+alt+t"
       },
       {
         "command": "governedWorkflow.toggleTerminalFullScreen",

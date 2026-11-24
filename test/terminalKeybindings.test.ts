@@ -21,8 +21,7 @@ function bindingsFor(command: string): Keybinding[] {
 
 describe('terminal keybindings', () => {
   it.each([
-    ['toggleTerminal', 'ctrl+alt+`'],
-    ['showTerminal', 'ctrl+alt+t'],
+    ['toggleTerminal', 'ctrl+alt+t'],
     ['toggleTerminalFullScreen', 'ctrl+alt+shift+enter'],
     ['openChangesTab', 'ctrl+alt+shift+c'],
     ['openScratchpads', 'ctrl+alt+shift+s'],
@@ -50,6 +49,11 @@ describe('terminal keybindings', () => {
 
   it('pasteImage_shouldLeaveCmdVTextPasteAlone', () => {
     expect(keybindings.some((binding) => binding.key.includes('cmd+v') || binding.mac?.includes('cmd+v'))).toBe(false);
+  });
+
+  it('showTerminal_shouldHaveNoKeybinding_becauseToggleTerminalOwnsTheShortcut', () => {
+    expect(bindingsFor('showTerminal')).toEqual([]);
+    expect(keybindings.some((binding) => binding.key.includes('`'))).toBe(false);
   });
 
   it('commandsToSkipShell_shouldListEveryTerminalShortcut', () => {
