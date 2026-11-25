@@ -5,16 +5,17 @@ import { DEFAULT_NAV, TAB_ORDER, type NavTarget, type TabId } from '../shared/na
 const KEY_PREFIX = 'governedWorkflow.lastTab:';
 
 // Like the web's ui_last_tab:<project>/<branch>: a workspace reopens on the tab last picked there.
-// A first visit lands on what needs the user (see needsAttentionNav), otherwise on DEFAULT_NAV (Progress).
+// A first visit lands on firstVisitNav's target (what needs the user, or the task section of a new workspace),
+// otherwise on DEFAULT_NAV (Progress).
 export class LastTabMemory {
   constructor(private readonly memento: vscode.Memento) {}
 
-  initialNav(ref: WorkspaceRef | undefined, attention: NavTarget | undefined): NavTarget {
+  initialNav(ref: WorkspaceRef | undefined, firstVisit: NavTarget | undefined): NavTarget {
     const tab = this.rememberedTab(ref);
     if (tab !== undefined) {
       return { tab };
     }
-    return attention ?? DEFAULT_NAV;
+    return firstVisit ?? DEFAULT_NAV;
   }
 
   rememberedTab(ref: WorkspaceRef | undefined): TabId | undefined {

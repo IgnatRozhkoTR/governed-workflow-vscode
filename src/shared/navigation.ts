@@ -124,6 +124,15 @@ export function needsAttentionNav(signals: AttentionSignals): NavTarget | undefi
   return signals.isTicketFinished ? TICKET_SUMMARY_NAV : undefined;
 }
 
+const UNSTARTED_PHASE = '0';
+
+// A first visit lands on what needs the user; with nothing waiting, a workspace that has not started is a new task
+// whose ticket is still to be pasted, so it opens on the task section wherever it was created.
+export function firstVisitNav(state: WorkspaceState, pendingProposals: number): NavTarget | undefined {
+  const attention = needsAttentionNav(attentionSignals(state, pendingProposals));
+  return attention ?? (state.phase === UNSTARTED_PHASE ? NEW_WORKSPACE_NAV : undefined);
+}
+
 export function isSameNav(a: NavTarget, b: NavTarget): boolean {
   return a.tab === b.tab && a.section === b.section && a.anchor === b.anchor && a.action === b.action
     && a.comment?.scope === b.comment?.scope && a.comment?.target === b.comment?.target;

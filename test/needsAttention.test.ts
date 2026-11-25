@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { attentionSignals, blockingThreadCount, isFinalPhase, needsAttentionNav, pendingGateNav, type AttentionSignals } from '../src/shared/navigation';
+import {
+  NEW_WORKSPACE_NAV, attentionSignals, blockingThreadCount, firstVisitNav, isFinalPhase, needsAttentionNav, pendingGateNav, type AttentionSignals,
+} from '../src/shared/navigation';
 import { isPlanAwaitingApproval } from '../src/shared/planStage';
 import { makeComment, makeState } from './support/fixtures';
 
@@ -21,6 +23,21 @@ describe('needsAttentionNav', () => {
 
   it('needsAttentionNav_shouldBeUndefined_whenNothingWaits', () => {
     expect(needsAttentionNav(NOTHING)).toBeUndefined();
+  });
+});
+
+describe('firstVisitNav', () => {
+  it('firstVisitNav_shouldLandOnTaskSection_whenWorkspaceHasNotStarted', () => {
+    expect(firstVisitNav(makeState({ phase: '0', pending_gate: null }), 0)).toEqual(NEW_WORKSPACE_NAV);
+  });
+
+  it('firstVisitNav_shouldPreferWaitingGate_overTaskSection', () => {
+    expect(firstVisitNav(makeState({ phase: '0', pending_gate: { phase: '1.4', accepts_commit_message: false } }), 0))
+      .toEqual({ tab: 'preplanning', anchor: 'preplanning-approval' });
+  });
+
+  it('firstVisitNav_shouldBeUndefined_whenStartedWorkspaceHasNothingWaiting', () => {
+    expect(firstVisitNav(makeState({ phase: '3.1.0', pending_gate: null }), 0)).toBeUndefined();
   });
 });
 

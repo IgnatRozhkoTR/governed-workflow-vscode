@@ -4,10 +4,9 @@ import { ApiError, AuthRequiredError } from '../api/errors';
 import type { WorkspaceLocator } from '../fs/workspaceLocator';
 import type { WorkspaceRef, WorkspaceState } from '../api/types';
 import {
-  attentionSignals,
+  firstVisitNav,
   isReflectionPhase,
   isSameNav,
-  needsAttentionNav,
   type NavTarget,
   type Topic,
 } from '../shared/navigation';
@@ -241,7 +240,7 @@ class WorkspaceControlPanel implements vscode.Disposable {
     if (ref === undefined || state === undefined) {
       return;
     }
-    const target = this.lastTabs.initialNav(ref, await this.attentionNav(ref, state));
+    const target = this.lastTabs.initialNav(ref, await this.firstVisitNav(ref, state));
     if (generation !== this.landingGeneration || this.landing !== 'open') {
       return;
     }
@@ -252,9 +251,9 @@ class WorkspaceControlPanel implements vscode.Disposable {
     }
   }
 
-  private async attentionNav(ref: WorkspaceRef, state: WorkspaceState): Promise<NavTarget | undefined> {
+  private async firstVisitNav(ref: WorkspaceRef, state: WorkspaceState): Promise<NavTarget | undefined> {
     const pendingProposals = isReflectionPhase(state.phase) ? await this.countPendingProposals(ref) : 0;
-    return needsAttentionNav(attentionSignals(state, pendingProposals));
+    return firstVisitNav(state, pendingProposals);
   }
 
   // Landing is a convenience: if the proposals cannot be read, the panel lands as if none waited,
@@ -273,8 +272,8 @@ class WorkspaceControlPanel implements vscode.Disposable {
 
   private initialNav(): NavTarget {
     const state = this.deps.active.state;
-    const attention = state === undefined ? undefined : needsAttentionNav(attentionSignals(state, 0));
-    return this.lastTabs.initialNav(this.deps.active.ref, attention);
+    const firstVisit = state === undefined ? undefined : firstVisitNav(state, 0);
+    return this.lastTabs.initialNav(this.deps.active.ref, firstVisit);
   }
 
   private followPoller(): void {

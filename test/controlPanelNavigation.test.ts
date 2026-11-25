@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../src/api/errors';
 import type { WorkspaceRef, WorkspaceState } from '../src/api/types';
+import { NEW_WORKSPACE_NAV } from '../src/shared/navigation';
 import { PROTOCOL_VERSION, type HostMessage } from '../src/shared/protocol';
 import { registerControlPanel, type ControlPanelDeps, type WorkspaceControlPanelHost } from '../src/webview/controlPanel';
 import { ReadyGatedNavigation } from '../src/webview/readyGatedNavigation';
@@ -185,6 +186,26 @@ describe('WorkspaceControlPanel first-visit needs-attention landing', () => {
     await flushLanding();
 
     expect(navigateEvents(harness.posted)).toEqual([{ tab: 'progress', anchor: 'progress-summary' }]);
+  });
+
+  it('firstState_shouldLandOnTaskSection_whenWorkspaceHasNotStarted', async () => {
+    const harness = openPanel();
+
+    await harness.receive({ kind: 'ready', protocol: PROTOCOL_VERSION });
+    harness.publishState(makeState({ phase: '0', pending_gate: null }));
+    await flushLanding();
+
+    expect(navigateEvents(harness.posted)).toEqual([NEW_WORKSPACE_NAV]);
+  });
+
+  it('firstState_shouldKeepRememberedTab_whenWorkspaceHasNotStarted', async () => {
+    const harness = openPanel({ rememberedTab: 'progress' });
+
+    await harness.receive({ kind: 'ready', protocol: PROTOCOL_VERSION });
+    harness.publishState(makeState({ phase: '0', pending_gate: null }));
+    await flushLanding();
+
+    expect(navigateEvents(harness.posted)).toEqual([]);
   });
 
   it('firstState_shouldKeepRememberedTab_whenGateIsPending', async () => {
